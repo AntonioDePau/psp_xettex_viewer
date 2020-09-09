@@ -1,5 +1,5 @@
 # PSP XetTex Viewer
-A tool to display unswizzled 4/8bpp TEX (or XET) psp texture files
+A tool to display unswizzled 4/8bpp TEX (or XET) psp texture files (for Lord of Apocalypse in particular, but may work for other Square Enix titles using XET texture files)
 
 Drag a XET file over the exe and it will show you each texture it contains one by one (in a different window).
 You need to close the first window for the next one to appear. (Needs serious improvements and code cleaning)
