@@ -9,7 +9,7 @@ TODO:
 - Repack extracted textures into a XET file
 
 XET file format:
-- 4 first bytes: file format --> XET. (LE, would be .XET in BE)
+- 4 first bytes: file format --> XET. (LE, would be .TEX in BE)
 - 1st next byte: file version (?) --> 1
 - 2 next bytes : file count [LE]
 - 2 next bytes : (same as above?)
