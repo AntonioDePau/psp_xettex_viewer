@@ -7,18 +7,6 @@ using System.Windows.Forms;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 
-public class PictureBoxWithInterpolationMode : PictureBox
-{
-    public InterpolationMode InterpolationMode { get; set; }
-
-    protected override void OnPaint(PaintEventArgs paintEventArgs)
-    {
-        paintEventArgs.Graphics.InterpolationMode =	InterpolationMode.NearestNeighbor;
-		paintEventArgs.Graphics.PixelOffsetMode = PixelOffsetMode.Half;
-		base.OnPaint(paintEventArgs);
-    }
-}
-
 static class CTEinfoParser{
 	
 	static int cint(byte[] x){
@@ -146,18 +134,7 @@ static class CTEinfoParser{
 			}
 		}
 		
-		//
-		//f.Close();
-		for(int i=0;i<images.Count;i++){
-			DisplayImage(images[i]["width"], images[i]["height"], images[i]["bpp"], images[i]["unswizzled"], images[i]["palette"], images[i]["name"]);
-		}
-		//Console.ReadLine();
-		//Console.WriteLine(output);
-		/*ProcessStartInfo start = new ProcessStartInfo();
-		start.Arguments = fn;
-		start.FileName = "Console Texture Explorer.exe";
-		File.WriteAllText(Path.GetFileNameWithoutExtension(fn)+".ini", output);*/
-		//Process.Start(start);
+		ShowForm(images);
 	}
 	
 	
@@ -190,22 +167,14 @@ static class CTEinfoParser{
 		return destination;
 	}
 	
-	static void DisplayImage(int w, int h, int bpp, byte[] data, byte[] palette, string name = ""){
-		Form f = new Form();
-		f.Text = name + " - " + data.Length;
-		f.Width = 250+(w);
-		f.Height = 50+(h);
-		f.MinimumSize = new Size(f.Width, f.Height);
-		
-		Panel p = new Panel();
-		p.Width = w;
-		p.Height = h;
-		p.Anchor = (AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right);
-		f.Controls.Add(p);
+	static Bitmap GetBitmapFromPalette(Dictionary<string,dynamic> image){
+		int w = image["width"];
+		int h = image["height"];
+		byte[] data = image["unswizzled"];
+		byte[] palette = image["palette"];
+		int bpp = image["bpp"];
 		
 		Bitmap bmp = new Bitmap(w, h);
-		//data = UnSwizzle(data, 0, w, h, bpp);
-		
 		int hp = 0;
 		int bppm = 8 / bpp;
 		Console.WriteLine("Parsing " + data.Length);
@@ -229,29 +198,75 @@ static class CTEinfoParser{
 			Color c = Color.FromArgb(palette[pi+3],palette[pi],palette[pi+1],palette[pi+2]);
 			bmp.SetPixel(tx, hp, c);
 		}
-		Bitmap obmp = bmp;
+		return bmp;
+	}
+	
+	public static void DrawPicture(MouseEventArgs e = null){
+		int sv = p.VerticalScroll.Value;
+		p.VerticalScroll.Value = sv >= 120 ? sv - 120 : sv;
+		if(e!=null) zoomLevel *= e.Delta > 0 ? 1.10f : 0.90f;
+		zoomLevel = zoomLevel < .50f ? .50f : zoomLevel;
+		zoomLevel = zoomLevel > 50f ? 50f : zoomLevel;
+		//Console.WriteLine(zoomLevel);
+		int newW = (int)((float)obmp.Width * zoomLevel);
+		int newH = (int)((float)obmp.Height * zoomLevel);
+		bmp = new Bitmap(newW, newH);
+		//Console.WriteLine(zoomLevel.ToString("0.0##"));
+		using (Graphics g = Graphics.FromImage(bmp)){
+			g.InterpolationMode = InterpolationMode.NearestNeighbor;
+			g.DrawImage(obmp, new Rectangle(Point.Empty, bmp.Size));
+			g.DrawRectangle(new Pen(Brushes.Black, 1), new Rectangle(0, 0, bmp.Width-1, bmp.Height-1));
+		}
+		pb.Image = bmp;
+		pb.Size = bmp.Size;
+	}
 		
-		PictureBox i = new PictureBox();
+	public static float zoomLevel = 1f;
+	public static PictureBox pb;
+	
+	public static Panel p;
+	public static Bitmap bmp;
+	public static Bitmap obmp;
+	
+	static void ShowForm(List<Dictionary<string,dynamic>> images){
+		Form f = new Form();
+		f.Text = "XetTex Viewer";
+		f.Width = 350;
+		f.Height = 150;
+		f.MinimumSize = new Size(f.Width, f.Height);
+		
+		p = new Panel();
+		p.Width = 200;
+		p.Height = 50;
+		p.BackColor = Color.Gray;
+		p.AutoScroll = true;
+		p.Anchor = (AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right);
+		f.Controls.Add(p);
+		
+		ListBox lb = new ListBox();
+		lb.Location = new Point(205);
+		lb.Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right);
+		for(int i = 0; i<images.Count; i++){
+			lb.Items.Add(images[i]["name"]);
+		}
+		f.Controls.Add(lb);
+		lb.SelectedIndexChanged += (s,e) => {
+			bmp = GetBitmapFromPalette(images[lb.SelectedIndex]);
+			obmp = bmp;
+			DrawPicture();
+		};
+		
+		if(images.Count > 0) bmp = GetBitmapFromPalette(images[0]);
+		obmp = bmp;
+		
+		pb = new PictureBox();
 
-		i.BorderStyle = BorderStyle.FixedSingle;
-		i.Width = w;
-		i.Height = h;
-		i.Anchor = (AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right);
-		i.Image = bmp;
-		i.BackColor = Color.Black;
-		p.Controls.Add(i);
-		
-		f.Resize += (s, e) => {
-			float zoomFactorW = (float)i.Width / (float)w;
-			float zoomFactorH = (float)i.Height / (float)h;
-			float l = (zoomFactorH < zoomFactorW ? zoomFactorH : zoomFactorW);
-			bmp = new Bitmap((int)((float)obmp.Width * l), (int)((float)obmp.Height * l));
-			Console.WriteLine(l.ToString("0.0##"));
-			    using (Graphics g = Graphics.FromImage(bmp)){
-					g.InterpolationMode = InterpolationMode.NearestNeighbor;
-					g.DrawImage(obmp, new Rectangle(Point.Empty, bmp.Size));
-				}
-				i.Image = bmp;
+		//pb.Width = bmp.Width;
+		//pb.Height = bmp.Height;
+		DrawPicture();
+		p.Controls.Add(pb);
+		p.MouseWheel += (s, e) => {
+			DrawPicture(e);
 		};
 		
 		f.ShowDialog();
