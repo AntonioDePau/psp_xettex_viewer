@@ -40,6 +40,30 @@ namespace XetTexTool {
 		}	
 	}
 	
+	class TexHeaderMap {
+		public int FileExtension { get; set; }
+		public int FileVersion { get; set; }
+		public short FileCount { get; set; }
+		public short FileCountB { get; set; }
+		public int Unk0c { get; set; }
+		public int FileListOffset { get; set; }
+		public int FileInfoOffset { get; set; }
+		public int FileNamesOffset { get; set; }
+	}
+	
+	class TexTexture {
+		public short Width { get; set; }
+		public short Height { get; set; }
+		public short Largest { get; set; }
+		public short Unk06 { get; set; }
+		public int BitsPerPixel { get; set; }
+		public int Number { get; set; }
+		public int Unk08 { get; set; }
+		public byte[] Binary { get; set; }
+		public byte[] Unswizzle { get; set; }
+		public byte[] Palette { get; set; }
+	}
+	
 	static class XetTexTool {
 
 		static int cint(byte[] x) {
@@ -79,53 +103,63 @@ namespace XetTexTool {
 			using(BinaryReader f = new BinaryReader(File.Open(fn, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))) {
 				int p = 16;
 				string output = "";
+				
+				//Currently breaking everything since the values are read as BE rather than LE
+				TexHeaderMap TexFile = new TexHeaderMap {
+					FileExtension = f.ReadInt32(),
+					FileVersion = f.ReadInt32(),
+					FileCount = f.ReadInt16(),
+					FileCountB = f.ReadInt16(),
+					Unk0c = f.ReadInt32(),
+					FileListOffset = f.ReadInt32(),
+					FileInfoOffset = f.ReadInt32(),
+					FileNamesOffset = f.ReadInt32()
+				};
 
-				int files = cint(f.readAt(8, 2));
 				output += "[items_count]\n";
-				output += "count=" + files.ToString();
+				output += "count=" + TexFile.FileCount.ToString();
 
-				for (int i = 0; i < files; i++) {
-					p = 16;
-					int offset1 = cint(f.readAt(p, 4));
-					Console.WriteLine("offset1 (imgs infos): " + offset1);
-					p += 4;
+				for (int i = 0; i < TexFile.FileCount; i++) {
+					TexTexture texture = new TexTexture();
+					
+					f.BaseStream.Seek(TexFile.FileListOffset + (4 * i) + (12 * i), SeekOrigin.Begin);
+					
+					texture.BitsPerPixel = f.ReadInt32() == 5 ?  8 : 4;
+					Console.WriteLine("BPP: " + texture.BitsPerPixel);
+					//p = TexFile.FileListOffset + 12 + (4 * i) + (12 * i);
+					//f.BaseStream.Seek(10, SeekOrigin.Current);
+					
+					texture.Number = f.ReadInt32();
+					texture.Unk08 = f.ReadInt32();
 
-					int offset2 = cint(f.readAt(p, 4));
-					Console.WriteLine("offset2 (duplicate Data offset (bpp, paletteOffset)): " + offset2);
-					p += 4;
-
-					int offset3 = cint(f.readAt(p, 4));
-					Console.WriteLine("offset3 (nameOffset): " + offset3);
-					p = offset1 + (4 * i) + (12 * i);
-
-					int bpp = cint(f.readAt(p, 2)) == 5 ? 8 : 4;
-					Console.WriteLine("BPP: " + bpp);
-					p = offset1 + 12 + (4 * i) + (12 * i);
-
-					int offset4 = cint(f.readAt(p, 4));
+					//int offset4 = cint(f.readAt(p, 4));
+					
+					int offset4 = f.ReadInt32();
 					Console.WriteLine("offset4 (img data?): " + offset4);
 					p = offset4;
 
-					int imgWidth = cint(f.readAt(p, 2));
-					Console.WriteLine("imgWidth: " + imgWidth);
-					p += 2;
+					texture.Width = f.ReadInt16();
+					Console.WriteLine("imgWidth: " + texture.Width);
+					//p += 2;
 
-					int imgHeight = cint(f.readAt(p, 2));
-					Console.WriteLine("imgHeight: " + imgHeight);
-					p += 2;
+					texture.Height = f.ReadInt16();
+					Console.WriteLine("imgHeight: " + texture.Height);
+					//p += 2;
 
-					int UnknownInt1 = cint(f.readAt(p, 2));
-					Console.WriteLine("UnknownInt1: " + UnknownInt1);
+					texture.Largest = f.ReadInt16();
+					//int UnknownInt1 = cint(f.readAt(p, 2));
+					//Console.WriteLine("UnknownInt1: " + UnknownInt1);
 
-					int UnknownInt2 = cint(f.readAt(p + 2, 2));
-					Console.WriteLine("UnknownInt2: " + UnknownInt2);
-					p += 4;
+					//int UnknownInt2 = cint(f.readAt(p + 2, 2));
+					//Console.WriteLine("UnknownInt2: " + UnknownInt2);
+					//p += 4;
+					texture.Unk06 = f.ReadInt16();
 
-					int dataStart = cint(f.readAt(p, 4));
+					int dataStart = f.ReadInt32();
 					Console.WriteLine("dataStart: " + dataStart);
-					p = offset2 + 4 + (8 * i);
+					f.BaseStream.Seek(TexFile.FileInfoOffset + 4 + (8 * i), SeekOrigin.Begin);
 
-					int paletteOffset = cint(f.readAt(p, 4));
+					int paletteOffset = f.ReadInt32();
 					Console.WriteLine("paletteOffset: " + paletteOffset);
 					p = 24;
 
@@ -138,13 +172,13 @@ namespace XetTexTool {
 					byte[] data = f.readAt(dataStart, paletteOffset - dataStart);
 					byte[] palette = f.readAt(paletteOffset, offset4);
 
-					byte[] unswizzled = PSP.UnSwizzle(data, 0, imgWidth, imgHeight, bpp);
+					byte[] unswizzled = PSP.UnSwizzle(data, 0, (int) texture.Width, (int) texture.Height, (int) texture.BitsPerPixel);
 
 					images.Add(
 						new Dictionary<string, dynamic> { { "name", name },
-							{ "width", imgWidth },
-							{ "height", imgHeight },
-							{ "bpp", bpp },
+							{ "width", (int) texture.Width },
+							{ "height", (int) texture.Height },
+							{ "bpp", (int) texture.BitsPerPixel },
 							{ "binary", data },
 							{ "unswizzled", unswizzled },
 							{ "palette", palette }
@@ -157,9 +191,9 @@ namespace XetTexTool {
 					output += "\nname=" + name;
 					output += "\nplatform=PSP";
 					output += "\noffset=" + dataStart.ToString();
-					output += "\nwidth=" + imgWidth.ToString();
-					output += "\nheight=" + imgHeight.ToString();
-					output += "\nBPP=" + bpp.ToString();
+					output += "\nwidth=" + texture.Width.ToString();
+					output += "\nheight=" + texture.Height.ToString();
+					output += "\nBPP=" + texture.BitsPerPixel.ToString();
 					output += "\nmipmaps=-1";
 					output += "\npalette_offset=" + paletteOffset.ToString();
 					output += "\nswizzling=Enabled";
