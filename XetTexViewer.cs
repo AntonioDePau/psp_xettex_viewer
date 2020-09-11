@@ -6,32 +6,33 @@ using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using System.Threading;
 
 namespace XetTexTool {
-
+	
 	class BigEndianBinaryReader : BinaryReader {
 		
-		public BigEndianBinaryReader(Stream input) : base(input) {
+        public BigEndianBinaryReader(Stream input) : base(input) {
+            
+        }
 
-		}
-
-		public override short ReadInt16() {
-		    byte[] b = ReadBytes(2);
-				b.Reverse();
-		    return (short) BitConverter.ToInt16(b, 0);
-		}
+        public override short ReadInt16() {
+            byte[] b = ReadBytes(2);
+			b.Reverse();
+            return (short) BitConverter.ToInt16(b, 0);
+        }
 		
-		public override int ReadInt32() {
-		    byte[] b = ReadBytes(4);
-				b.Reverse();
-				return BitConverter.ToInt32(b, 0);
-		}
+        public override int ReadInt32() {
+            byte[] b = ReadBytes(4);
+			b.Reverse();
+			return BitConverter.ToInt32(b, 0);
+        }
 		
-		public override long ReadInt64() {
-		    byte[] b = ReadBytes(8);
-				b.Reverse();
-		    return (long) BitConverter.ToInt64(b, 0);
-		}
+        public override long ReadInt64() {
+            byte[] b = ReadBytes(8);
+			b.Reverse();
+            return (long) BitConverter.ToInt64(b, 0);
+        }
 	}
 	
 	static class PSP {
@@ -67,8 +68,7 @@ namespace XetTexTool {
 	}
 	
 	class TexHeaderMap {
-		
-		public int FileExtension { get; set; }
+		public string FileExtension { get; set; }
 		public int FileVersion { get; set; }
 		public short FileCount { get; set; }
 		public short FileCountB { get; set; }
@@ -79,7 +79,6 @@ namespace XetTexTool {
 	}
 	
 	class TexTexture {
-		
 		public int Width { get; set; }
 		public int Height { get; set; }
 		public short Largest { get; set; }
@@ -127,15 +126,13 @@ namespace XetTexTool {
 			return reader.ReadBytes(b);
 		}
 
-		static List<TexTexture> images;
-
-		static void parse(string fn) {
-			images = new List<TexTexture>();
+		static List<TexTexture> parseFile(string fn) {
+			List<TexTexture> images = new List<TexTexture>();
 			using(BigEndianBinaryReader f = new BigEndianBinaryReader(File.Open(fn, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))) {
 				string output = "";
 				
 				TexHeaderMap TexFile = new TexHeaderMap {
-					FileExtension = f.ReadInt32(),
+					FileExtension = System.Text.Encoding.UTF8.GetString(f.ReadBytes(4), 0, 4),
 					FileVersion = f.ReadInt32(),
 					FileCount = f.ReadInt16(),
 					FileCountB = f.ReadInt16(),
@@ -144,6 +141,8 @@ namespace XetTexTool {
 					FileInfoOffset = f.ReadInt32(),
 					FileNamesOffset = f.ReadInt32()
 				};
+				
+				if(TexFile.FileExtension != "XET.") return images;
 				
 				output += "[items_count]\n";
 				output += "count=" + TexFile.FileCount.ToString();
@@ -206,11 +205,10 @@ namespace XetTexTool {
 				}
 			}
 
-			ShowForm(images);
+			return images;
 		}
 
 		static Bitmap GetBitmapFromPalette(TexTexture texture) {
-			
 			Bitmap bmp = new Bitmap(texture.Width, texture.Height);
 			int row = 0;
 			int bitsPerPixelMultiplier = 8 / texture.BitsPerPixel;
@@ -238,7 +236,6 @@ namespace XetTexTool {
 		}
 
 		public static void DrawPicture(MouseEventArgs e = null) {
-			
 			int sv = p.VerticalScroll.Value;
 			p.VerticalScroll.Value = sv >= 120 ? sv - 120 : sv;
 			if (e != null) zoomLevel *= e.Delta > 0 ? 1.10f : 0.90f;
@@ -263,9 +260,32 @@ namespace XetTexTool {
 		public static Panel p;
 		public static Bitmap bmp;
 		public static Bitmap obmp;
-
-		static void ShowForm(List<TexTexture> images) {
+		public static ListBox imageList;
+		public static List<TexTexture> images;
+		public static Label info;
+		
+		static void loadImages(){
 			
+			imageList.Items.Clear();
+			for(int i = 0; i < images.Count; i++) {
+				imageList.Items.Add(images[i].Name);
+			}
+			
+			if(images.Count > 0){
+				imageList.SelectedIndex = 0;
+			}
+			displayImage();
+		}
+		
+		static void displayImage(){
+			TexTexture t = images[imageList.SelectedIndex];
+			bmp = GetBitmapFromPalette(t);
+			obmp = bmp;
+			DrawPicture();
+			info.Text =  t.Width + " x " + t.Height + " (" + t.BitsPerPixel + "bpp)";
+		}
+
+		static void ShowForm(string[] args) {
 			Form f = new Form();
 			f.Text = "XetTex Viewer";
 			f.Width = 350;
@@ -279,41 +299,60 @@ namespace XetTexTool {
 			p.AutoScroll = true;
 			p.Anchor = (AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right);
 			f.Controls.Add(p);
-
-			ListBox lb = new ListBox();
-			lb.Location = new Point(205);
-			lb.Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right);
-			for(int i = 0; i < images.Count; i++) {
-				lb.Items.Add(images[i].Name);
-			}
-			f.Controls.Add(lb);
-			lb.SelectedIndexChanged += (s, e) => {
-				bmp = GetBitmapFromPalette(images[lb.SelectedIndex]);
-				obmp = bmp;
-				DrawPicture();
-			};
 			
-			if(images.Count > 0){
-				lb.SelectedIndex = 0;
-			}
+			Panel infoPanel = new Panel();
+			infoPanel.Location = new Point(0,55);
+			infoPanel.Anchor = (AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Right);
+			f.Controls.Add(infoPanel);
+			
+			info = new Label();
+			infoPanel.Controls.Add(info);
+
+			imageList = new ListBox();
+			imageList.Location = new Point(205);
+			imageList.Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right);
+			
+			f.Controls.Add(imageList);
+			imageList.SelectedIndexChanged += (s, e) => {
+				displayImage();
+			};
 			obmp = bmp;
 
 			p.Controls.Add(pb);
 			p.MouseWheel += (s, e) => {
 				DrawPicture(e);
 			};
+			
+			f.AllowDrop = true;
+		
+			f.DragEnter += (s, e) => {
+				if (e.Data.GetDataPresent(DataFormats.FileDrop)) e.Effect = DragDropEffects.Copy;
+			};
+			
+			f.DragDrop += (s, e) => {
+				string[] fileList = (string[]) e.Data.GetData(DataFormats.FileDrop, false);
+				if(fileList.Length > 0){
+					List<TexTexture> tempImages = parseFile(fileList[0]);
+					if(tempImages.Count == 0){
+						MessageBox.Show("No images found!\nIncorrect file?");
+					}else{
+						images = tempImages;
+						loadImages();
+					}
+				}
+			};
+			
+			if (args.Length > 0 && File.Exists(args[0])) {
+				images = parseFile(args[0]);
+				loadImages();
+			}
 
 			f.ShowDialog();
 		}
 
+		[STAThread]
 		static void Main(string[] args) {
-			
-			if (args.Length > 0 && File.Exists(args[0])) {
-				parse(args[0]);
-			} else {
-				Console.WriteLine("Please input a file!");
-				Console.ReadLine();
-			}
+			ShowForm(args);
 		}
 	}
 }
