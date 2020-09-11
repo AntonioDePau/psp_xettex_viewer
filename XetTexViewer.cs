@@ -229,7 +229,7 @@ namespace XetTexTool {
 						paletteIndex = ((int) (texture.Unswizzled[dataIndex] >> 4)) * 4;
 					}
 				} else {
-					paletteIndex = ((int) texture.Binary[dataIndex]) * 4;
+					paletteIndex = ((int) texture.Unswizzled[dataIndex]) * 4;
 				}
 				Color c = Color.FromArgb(texture.Palette[paletteIndex + 3], texture.Palette[paletteIndex], texture.Palette[paletteIndex + 1], texture.Palette[paletteIndex + 2]);
 				bmp.SetPixel(col, row, c);
