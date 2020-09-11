@@ -8,31 +8,30 @@ using System.Linq;
 using System.Windows.Forms;
 
 namespace XetTexTool {
-	
-	class BigEndianBinaryReader : BinaryReader {
-        public BigEndianBinaryReader(Stream input) : base(input)
-        {
-            
-        }
 
-        public override short ReadInt16()
-        {
-            byte[] b = ReadBytes(2);
-			b.Reverse();
-            return (short) BitConverter.ToInt16(b, 0);
-        }
-        public override int ReadInt32()
-        {
-            byte[] b = ReadBytes(4);
-			b.Reverse();
-			return BitConverter.ToInt32(b, 0);
-        }
-        public override long ReadInt64()
-        {
-            byte[] b = ReadBytes(8);
-			b.Reverse();
-            return (long) BitConverter.ToInt64(b, 0);
-        }
+	class BigEndianBinaryReader : BinaryReader {
+		
+		public BigEndianBinaryReader(Stream input) : base(input) {
+
+		}
+
+		public override short ReadInt16() {
+		    byte[] b = ReadBytes(2);
+				b.Reverse();
+		    return (short) BitConverter.ToInt16(b, 0);
+		}
+		
+		public override int ReadInt32() {
+		    byte[] b = ReadBytes(4);
+				b.Reverse();
+				return BitConverter.ToInt32(b, 0);
+		}
+		
+		public override long ReadInt64() {
+		    byte[] b = ReadBytes(8);
+				b.Reverse();
+		    return (long) BitConverter.ToInt64(b, 0);
+		}
 	}
 	
 	static class PSP {
@@ -68,6 +67,7 @@ namespace XetTexTool {
 	}
 	
 	class TexHeaderMap {
+		
 		public int FileExtension { get; set; }
 		public int FileVersion { get; set; }
 		public short FileCount { get; set; }
@@ -79,6 +79,7 @@ namespace XetTexTool {
 	}
 	
 	class TexTexture {
+		
 		public int Width { get; set; }
 		public int Height { get; set; }
 		public short Largest { get; set; }
@@ -209,6 +210,7 @@ namespace XetTexTool {
 		}
 
 		static Bitmap GetBitmapFromPalette(TexTexture texture) {
+			
 			Bitmap bmp = new Bitmap(texture.Width, texture.Height);
 			int row = 0;
 			int bitsPerPixelMultiplier = 8 / texture.BitsPerPixel;
@@ -236,6 +238,7 @@ namespace XetTexTool {
 		}
 
 		public static void DrawPicture(MouseEventArgs e = null) {
+			
 			int sv = p.VerticalScroll.Value;
 			p.VerticalScroll.Value = sv >= 120 ? sv - 120 : sv;
 			if (e != null) zoomLevel *= e.Delta > 0 ? 1.10f : 0.90f;
@@ -262,6 +265,7 @@ namespace XetTexTool {
 		public static Bitmap obmp;
 
 		static void ShowForm(List<TexTexture> images) {
+			
 			Form f = new Form();
 			f.Text = "XetTex Viewer";
 			f.Width = 350;
@@ -303,6 +307,7 @@ namespace XetTexTool {
 		}
 
 		static void Main(string[] args) {
+			
 			if (args.Length > 0 && File.Exists(args[0])) {
 				parse(args[0]);
 			} else {
