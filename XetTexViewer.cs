@@ -49,6 +49,7 @@ namespace XetTexTool {
 				return BitConverter.ToInt32(x, 0);
 			} else {
 				// throw exception;
+				return -1;
 			}
 		}
 
