@@ -5,8 +5,8 @@ Drag a XET file over the exe and it will show you each texture it contains one b
 ~~You need to close the first window for the next one to appear.~~ (Needs serious improvements and code cleaning)
 
 TODO:
-~~- Display the form even if no file has been dragged on the exe~~ Done
-~~- Manage new files once the tool is open (drag-n-drop, browse file)~~ Done
+- ~~Display the form even if no file has been dragged on the exe~~ Done
+- ~~Manage new files once the tool is open (drag-n-drop, browse file)~~ Done
 - Extract textures to a folder (save as BMP probably)
 - Repack extracted textures into a XET file
 
