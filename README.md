@@ -1,13 +1,14 @@
 # PSP XetTex Viewer
 A tool to display unswizzled 4/8bpp TEX (or XET) psp texture files (for Lord of Apocalypse in particular, but may work for other Square Enix titles using XET texture files)
 
-Drag a XET file over the exe and it will show you each texture it contains one by one (in a different window).
+Drag a XET file over the exe or the form and it will show you the first texture, as well as the list of textures that you can select in the right-side list.
+The "Extract" button saves the textures to the Xet2Png directory as PNG files.
 ~~You need to close the first window for the next one to appear.~~ (Needs serious improvements and code cleaning)
 
 TODO:
 - ~~Display the form even if no file has been dragged on the exe~~ Done
 - ~~Manage new files once the tool is open (drag-n-drop, browse file)~~ Done
-- Extract textures to a folder (save as BMP probably)
+- ~~Extract textures to a folder (save as BMP probably)~~ Done
 - Repack extracted textures into a XET file
 
 XET file format:
