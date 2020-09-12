@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
@@ -91,7 +92,13 @@ namespace XetTexTool {
 		public byte[] Binary { get; set; }
 		public byte[] Unswizzled { get; set; }
 		public byte[] Palette { get; set; }
+		public Bitmap Bitmap { get; set; }
 		public string Name { get; set; }
+		public List<Color> Colors { get; set; }
+		
+		public TexTexture(){
+			Colors = new List<Color>();
+		}
 	}
 	
 	static class XetTexTool {
@@ -184,9 +191,10 @@ namespace XetTexTool {
 					texture.Name = name;
 
 					texture.Binary = f.readAt(texture.DataOffset, paletteOffset - texture.DataOffset);
-					texture.Palette = f.readAt(paletteOffset, texture.InfoOffset);
+					texture.Palette = f.readAt(paletteOffset, texture.InfoOffset - paletteOffset);
 
 					texture.Unswizzled = PSP.UnSwizzle(texture);
+					texture.Bitmap = GetBitmapFromPalette(texture);
 
 					images.Add(texture);
 
@@ -209,29 +217,45 @@ namespace XetTexTool {
 		}
 
 		static Bitmap GetBitmapFromPalette(TexTexture texture) {
-			Bitmap bmp = new Bitmap(texture.Width, texture.Height);
+			Bitmap bmp = new Bitmap(texture.Width, texture.Height, PixelFormat.Format8bppIndexed);
+			if (texture.BitsPerPixel == 4 )
+				bmp = new Bitmap(texture.Width, texture.Height, PixelFormat.Format4bppIndexed);
 			int row = 0;
 			int bitsPerPixelMultiplier = 8 / texture.BitsPerPixel;
+			
+			System.Drawing.Imaging.ColorPalette pal = bmp.Palette;
+			List<System.Drawing.Color> colors = new List<System.Drawing.Color>();
+			byte[] palette = texture.Palette;
+			for (int c = 0; c < pal.Entries.Length; c++) {
+				Color col = Color.FromArgb(palette[c * 4 + 3], palette[c * 4], palette[c * 4 + 1], palette[c * 4 + 2]);
+				pal.Entries[c] = col;
+			}
 
-			for (int x = 0; x < texture.Unswizzled.Length * bitsPerPixelMultiplier; x++) {
+			bmp.Palette = pal;
+			
+			BitmapData data = bmp.LockBits(new Rectangle(0, 0, texture.Width, texture.Height), ImageLockMode.WriteOnly, bmp.PixelFormat);
+
+			byte[] bytes = new byte[data.Height * data.Stride];
+			System.Runtime.InteropServices.Marshal.Copy(data.Scan0, bytes, 0, bytes.Length);
+
+			for (int x = 0; x < texture.Unswizzled.Length; x++) {
 				if (x >=  texture.Width + (texture.Width * row)) row++;
+				
 				int col = (x - (texture.Width * row));
 				int dataIndex = x;
 				int paletteIndex = 0;
 				if (texture.BitsPerPixel == 4) {
-					dataIndex = (x % 2 == 0 ? x : x - 1) / 2;
-					if (dataIndex >= texture.Unswizzled.Length) break;
-					if (x % 2 == 0) {
-						paletteIndex = ((int) (texture.Unswizzled[dataIndex] & 0x0F)) * 4;
-					} else {
-						paletteIndex = ((int) (texture.Unswizzled[dataIndex] >> 4)) * 4;
-					}
+					paletteIndex = (int) ((texture.Unswizzled[dataIndex] & 0xF0) >> 4 | (texture.Unswizzled[dataIndex] & 0x0F) << 4);
 				} else {
-					paletteIndex = ((int) texture.Unswizzled[dataIndex]) * 4;
+					paletteIndex = ((int) texture.Unswizzled[dataIndex]);
 				}
-				Color c = Color.FromArgb(texture.Palette[paletteIndex + 3], texture.Palette[paletteIndex], texture.Palette[paletteIndex + 1], texture.Palette[paletteIndex + 2]);
-				bmp.SetPixel(col, row, c);
+				int p = (row * (texture.Width) + col);
+				bytes[p] = (byte)paletteIndex;
 			}
+			
+			
+			System.Runtime.InteropServices.Marshal.Copy(bytes, 0, data.Scan0, bytes.Length);
+			bmp.UnlockBits(data);
 			return bmp;
 		}
 
@@ -264,14 +288,87 @@ namespace XetTexTool {
 		public static List<TexTexture> images;
 		public static Label info;
 		
+		static void writeTextures() {
+			if (images == null || images.Count == 0) return;
+			string extension = "Png";
+			string directoryName = "Xet2" + extension;
+			ImageFormat format = ImageFormat.Bmp;
+			switch (extension) {
+				case "Gif":
+					format = ImageFormat.Gif;
+					break;
+				case "Png":
+					format = ImageFormat.Png;
+					break;
+				default:
+					format = ImageFormat.Bmp;
+					break;
+			}
+			if (!Directory.Exists(directoryName)) Directory.CreateDirectory(directoryName);
+			for (int i = 0; i < images.Count; i++) {
+				Console.WriteLine(images[i].Bitmap.PixelFormat.ToString());
+				images[i].Bitmap.Save(directoryName + "/" + images[i].Name + "." + extension.ToLower(), format);
+			}
+		}
+		
+		static void writeBitmap() {
+			if (images == null || images.Count == 0) return;
+			string directoryName = "Xet2Bmp";
+			if (!Directory.Exists(directoryName)) Directory.CreateDirectory(directoryName);
+			
+			for (int i = 0; i < images.Count; i++) {
+				TexTexture img = images[i];
+				List<byte> file = new List<byte>();
+				byte[] b = new byte[]{0x42, 0x4D, 0, 0, 0, 0, 0, 0, 0, 0};
+				file.AddRange(b);
+				int dataOffset = 54 + img.Colors.Count * 4;
+				file.AddRange(BitConverter.GetBytes(dataOffset));
+				file.AddRange(BitConverter.GetBytes(40));
+				file.AddRange(BitConverter.GetBytes(img.Width));
+				file.AddRange(BitConverter.GetBytes(img.Height));
+				file.AddRange(BitConverter.GetBytes((short) 1));
+				file.AddRange(BitConverter.GetBytes((short) img.BitsPerPixel));
+				file.AddRange(BitConverter.GetBytes(0));
+				file.AddRange(BitConverter.GetBytes(0));
+				file.AddRange(BitConverter.GetBytes(2834));
+				file.AddRange(BitConverter.GetBytes(2834));
+				file.AddRange(BitConverter.GetBytes(img.Colors.Count));
+				file.AddRange(BitConverter.GetBytes(img.Colors.Count));
+				
+				for (int ci = 0; ci < img.Colors.Count; ci++) {
+					Color c = img.Colors[ci];
+					if (c.R == 0 && c.G == 0 && c.B == 0 ) c = Color.FromArgb(255,0,144,64);
+					file.Add(c.B);
+					file.Add(c.G);
+					file.Add(c.R);
+					file.Add(c.A);
+				}
+				
+				int bitsPerPixelMultiplier = 8 / img.BitsPerPixel;
+				Console.WriteLine("BPP: " + img.BitsPerPixel);
+				for (int y = (img.Height) - 1; y >= 0; y--) {
+					for (int x = 0; x < (img.Width / bitsPerPixelMultiplier); x++) {
+						byte by = img.Unswizzled[(y * (img.Width / bitsPerPixelMultiplier)) + x];
+						if (img.BitsPerPixel == 4)
+							by = (byte) ((by & 0xF0) >> 4 | (by & 0x0F) << 4);
+						file.Add(by);
+					}
+				}
+				file.InsertRange(2, (BitConverter.GetBytes(file.Count)));
+				file.RemoveRange(6,4);
+				
+				File.WriteAllBytes(directoryName + "/" + img.Name + ".bmp", file.ToArray());
+			}
+		}
+		
 		static void loadImages(){
 			
 			imageList.Items.Clear();
-			for(int i = 0; i < images.Count; i++) {
+			for (int i = 0; i < images.Count; i++) {
 				imageList.Items.Add(images[i].Name);
 			}
 			
-			if(images.Count > 0){
+			if (images.Count > 0) {
 				imageList.SelectedIndex = 0;
 			}
 			displayImage();
@@ -279,7 +376,7 @@ namespace XetTexTool {
 		
 		static void displayImage(){
 			TexTexture t = images[imageList.SelectedIndex];
-			bmp = GetBitmapFromPalette(t);
+			bmp = t.Bitmap;
 			obmp = bmp;
 			DrawPicture();
 			info.Text =  t.Width + " x " + t.Height + " (" + t.BitsPerPixel + "bpp)";
@@ -295,7 +392,7 @@ namespace XetTexTool {
 			p = new Panel();
 			p.Width = 200;
 			p.Height = 50;
-			p.BackColor = Color.Gray;
+			p.BackColor = Color.White;
 			p.AutoScroll = true;
 			p.Anchor = (AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right);
 			f.Controls.Add(p);
@@ -307,6 +404,15 @@ namespace XetTexTool {
 			
 			info = new Label();
 			infoPanel.Controls.Add(info);
+			
+			Button extractButton = new Button();
+			extractButton.Text = "Extract";
+			extractButton.Location = new Point(0, 20);
+			extractButton.Click += (s, e) => {
+				writeTextures();
+				//writeBitmap();
+			};
+			infoPanel.Controls.Add(extractButton);
 
 			imageList = new ListBox();
 			imageList.Location = new Point(205);
@@ -331,11 +437,11 @@ namespace XetTexTool {
 			
 			f.DragDrop += (s, e) => {
 				string[] fileList = (string[]) e.Data.GetData(DataFormats.FileDrop, false);
-				if(fileList.Length > 0){
+				if (fileList.Length > 0) {
 					List<TexTexture> tempImages = parseFile(fileList[0]);
-					if(tempImages.Count == 0){
+					if (tempImages.Count == 0) {
 						MessageBox.Show("No images found!\nIncorrect file?");
-					}else{
+					} else {
 						images = tempImages;
 						loadImages();
 					}
@@ -349,10 +455,23 @@ namespace XetTexTool {
 
 			f.ShowDialog();
 		}
+		
+		static void convertToXet(string f){
+			
+		}
 
 		[STAThread]
 		static void Main(string[] args) {
-			ShowForm(args);
+			if (args.Length > 0 && (args[0]=="-batch" || args[0]=="-b")) {
+				if (args.Length <= 1 ) return;
+				switch (args[1]) {
+					case "-bmp2xet":
+						if (args.Length > 1) convertToXet(args[2]);
+						break;
+				}
+			} else {
+				ShowForm(args);
+			}
 		}
 	}
 }
