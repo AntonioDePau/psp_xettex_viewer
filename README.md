@@ -3,7 +3,7 @@ A tool to display unswizzled 4/8bpp TEX (or XET) psp texture files (for Lord of 
 
 Drag a XET file over the exe or the form and it will show you the first texture, as well as the list of textures that you can select in the right-side list.
 The "Extract" button saves the textures to the Xet2Png directory as PNG files.
-~~You need to close the first window for the next one to appear.~~ (Needs serious improvements and code cleaning)
+~~You need to close the first window for the next one to appear.~~
 
 TODO:
 - ~~Display the form even if no file has been dragged on the exe~~ Done
