@@ -11,47 +11,24 @@ namespace ConsoleProject.View {
 
     public class Frontend {
 
-        private static float zoomLevel = 1f;
-        private static PictureBox pb = new PictureBox();
-        private static Panel panel;
-        private static Bitmap bmp;
-        private static Bitmap obmp;
-        private static ListBox imageList;
-        private static List<Texture> images;
-        private static Label info;
+        private float zoomLevel = 1f;
+        private PictureBox pictureBox = new PictureBox();
+        private Panel panel;
+        private Bitmap bmp;
+        private Bitmap obmp;
+        private ListBox imageListBox;
+        private List<Texture> images;
+        private Label labelInfo = new Label();
 
         public void ShowForm() {
             Form form = this.InitForm();
-            panel = this.InitMainPanel(); // image display panel
+            panel = this.InitMainPanel();
             form.Controls.Add(panel);
+            form.Controls.Add(this.InitInfoPanel());
+            imageListBox = this.InitListBox();
+            form.Controls.Add(imageListBox);
 
-            Panel infoPanel = new Panel {
-                Location = new Point(0, 55),
-                Anchor = (AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Right)
-            };
-            form.Controls.Add(infoPanel);
-
-            info = new Label();
-            infoPanel.Controls.Add(info);
-
-            Button extractButton = new Button();
-            extractButton.Text = "Extract";
-            extractButton.Location = new Point(0, 50);
-            extractButton.Click += (s, e) => {
-                ExportService.WriteTextures(images);
-            };
-            infoPanel.Controls.Add(extractButton);
-
-            imageList = new ListBox();
-            imageList.Location = new Point(205);
-            imageList.Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right);
-
-            form.Controls.Add(imageList);
-            imageList.SelectedIndexChanged += (s, e) => {
-                DisplayImage();
-            };
-
-            panel.Controls.Add(pb);
+            panel.Controls.Add(pictureBox);
             panel.MouseWheel += (s, e) => {
                 DrawPicture(e);
             };
@@ -99,6 +76,40 @@ namespace ConsoleProject.View {
             };
         }
 
+        private Button InitExtractButton() {
+            Button extractButton = new Button {
+                Text = "Extract",
+                Location = new Point(0, 50)
+            };
+            extractButton.Click += (s, e) => {
+                ExportService.WriteTextures(images);
+            };
+            return extractButton;
+        }
+
+        private Panel InitInfoPanel() {
+            Panel infoPanel = new Panel {
+                Location = new Point(0, 55),
+                Anchor = (AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Right)
+            };
+
+            infoPanel.Controls.Add(labelInfo);
+            infoPanel.Controls.Add(this.InitExtractButton());
+            return infoPanel;
+        }
+
+        private ListBox InitListBox() {
+            ListBox listBox = new ListBox {
+                Location = new Point(205),
+                Anchor = (AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right)
+            };
+
+            listBox.SelectedIndexChanged += (s, e) => {
+                DisplayImage();
+            };
+            return listBox;
+        }
+
         private void DrawPicture(MouseEventArgs mouseEvent = null) {
             int sv = panel.VerticalScroll.Value;
             panel.VerticalScroll.Value = sv >= 120 ? sv - 120 : sv;
@@ -115,28 +126,28 @@ namespace ConsoleProject.View {
                 g.DrawImage(obmp, new Rectangle(Point.Empty, bmp.Size));
                 g.DrawRectangle(new Pen(Brushes.Black, 1), new Rectangle(0, 0, bmp.Width - 1, bmp.Height - 1));
             }
-            pb.Image = bmp;
-            pb.Size = bmp.Size;
+            pictureBox.Image = bmp;
+            pictureBox.Size = bmp.Size;
         }
 
         private void LoadImages() {
-            imageList.Items.Clear();
+            imageListBox.Items.Clear();
             for (int i = 0; i < images.Count; i++) {
-                imageList.Items.Add(images[i].Name);
+                imageListBox.Items.Add(images[i].Name);
             }
 
             if (images.Count > 0) {
-                imageList.SelectedIndex = 0;
+                imageListBox.SelectedIndex = 0;
             }
             DisplayImage();
         }
 
         private void DisplayImage() {
-            Texture t = images[imageList.SelectedIndex];
+            Texture t = images[imageListBox.SelectedIndex];
             bmp = t.Bitmap;
             obmp = bmp;
             DrawPicture();
-            info.Text = t.Width + " x " + t.Height + " (" + t.BitsPerPixel + "bpp)";
+            labelInfo.Text = t.Width + " x " + t.Height + " (" + t.BitsPerPixel + "bpp)";
         }
 
     }
