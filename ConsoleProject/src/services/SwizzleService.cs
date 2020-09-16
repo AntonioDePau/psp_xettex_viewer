@@ -6,7 +6,6 @@ namespace ConsoleProject.Services {
     // Swizzling textures is benefical to the GPU hardware's caching
     public static class SwizzleService {
 
-        //TODO narrow Texture class parameter
         public static byte[] Swizzle(Texture texture) {
             int offset = 0;
 

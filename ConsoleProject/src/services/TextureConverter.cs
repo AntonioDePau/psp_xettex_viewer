@@ -60,18 +60,17 @@ namespace ConsoleProject.Services {
             texture.DataOffset = f.ReadInt32();
 
             f.BaseStream.Seek(textureHeader.FileInfoOffset + 4 + (8 * i), SeekOrigin.Begin);
-            int paletteOffset = f.ReadInt32(); // TODO persist on DTO
+            texture.PaletteOffset = f.ReadInt32();
 
             byte[] nb = f.ReadAt(textureHeader.FileNamesOffset, (int)f.BaseStream.Length - textureHeader.FileNamesOffset);
             string name = System.Text.Encoding.UTF8.GetString(nb, 0, nb.Length).Split('\x00')[i];
             texture.Name = name;
 
-            texture.Binary = f.ReadAt(texture.DataOffset, paletteOffset - texture.DataOffset);
-            texture.Palette = f.ReadAt(paletteOffset, texture.InfoOffset - paletteOffset);
+            texture.Binary = f.ReadAt(texture.DataOffset, texture.PaletteOffset - texture.DataOffset);
+            texture.Palette = f.ReadAt(texture.PaletteOffset, texture.InfoOffset - texture.PaletteOffset);
             texture.Unswizzled = UnSwizzle(texture);
             texture.Bitmap = GetBitmapFromPalette(texture);
 
-            // TODO
             Console.WriteLine(texture);
 
             return texture;
@@ -131,12 +130,7 @@ namespace ConsoleProject.Services {
         }
 
         public static void SaveTexFile(List<Texture> images) {
-            TexHeaderMap header = new TexHeaderMap();
-            header.FileExtension = "XET.";
-            header.FileVersion = 1;
-            header.FileCount = (short)images.Count;
-            header.FileCountB = (short)images.Count;
-            header.Unk0c = 0;
+            TexHeaderMap header = new TexHeaderMap(images.Count);
 
             List<byte> file = Enumerable.Repeat((byte)0x00, 48).ToList();
             for (int i = 0; i < images.Count; i++) {
