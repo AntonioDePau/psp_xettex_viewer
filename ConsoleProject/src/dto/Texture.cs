@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 
 namespace ConsoleProject.DTO {
@@ -14,6 +15,7 @@ namespace ConsoleProject.DTO {
         public int Number { get; set; }
         public int Unk08 { get; set; }
         public int InfoOffset { get; set; }
+        public int PaletteOffset { get; set; }
         public byte[] Binary { get; set; }
         public byte[] Unswizzled { get; set; }
         public byte[] Palette { get; set; }
@@ -23,6 +25,14 @@ namespace ConsoleProject.DTO {
 
         public Texture() {
             Colors = new List<Color>();
+            Unk06 = 0;
+        }
+
+        public Texture(int w, int h) {
+            Colors = new List<Color>();
+            Width = w;
+            Height = h;
+            Largest = (short)Math.Max(w, h);
         }
 
         public override string ToString() {

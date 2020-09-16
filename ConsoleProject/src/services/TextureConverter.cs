@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
 using ConsoleProject.DTO;
 using ConsoleProject.Utils;
 
@@ -129,6 +130,81 @@ namespace ConsoleProject.Services {
             return SwizzleService.UnSwizzle(swizzledTexture);
         }
 
+        public static void SaveTexFile(List<Texture> images) {
+            TexHeaderMap header = new TexHeaderMap();
+            header.FileExtension = "XET.";
+            header.FileVersion = 1;
+            header.FileCount = (short)images.Count;
+            header.FileCountB = (short)images.Count;
+            header.Unk0c = 0;
+
+            List<byte> file = Enumerable.Repeat((byte)0x00, 48).ToList();
+            for (int i = 0; i < images.Count; i++) {
+                Texture texture = images[i];
+                texture.DataOffset = file.Count;
+                Console.WriteLine(texture.Binary.Length);
+                file.AddRange(texture.Binary.ToList());
+                texture.PaletteOffset = file.Count;
+                file.AddRange(texture.Palette.ToList());
+                texture.InfoOffset = file.Count;
+                file.AddRange(BitConverter.GetBytes((short)texture.Width).ToList());
+                file.AddRange(BitConverter.GetBytes((short)texture.Height).ToList());
+                file.AddRange(BitConverter.GetBytes(texture.Largest).ToList());
+                file.AddRange(new List<byte> { 0x00, 0x00 });
+                file.AddRange(BitConverter.GetBytes(texture.DataOffset).ToList());
+                file.AddRange(new List<byte> { 0x00, 0x00, 0x00, 0x00 });
+            }
+
+            header.FileListOffset = file.Count;
+            for (int i = 0; i < images.Count; i++) {
+                Texture texture = images[i];
+                file.AddRange(BitConverter.GetBytes(texture.BitsPerPixel == 8 ? 5 : 4).ToList());
+                file.AddRange(BitConverter.GetBytes(i).ToList());
+                file.AddRange(BitConverter.GetBytes(0).ToList());
+                file.AddRange(BitConverter.GetBytes(texture.InfoOffset).ToList());
+            }
+
+            header.FileInfoOffset = file.Count;
+            for (int i = 0; i < images.Count; i++) {
+                Texture texture = images[i];
+                file.AddRange(BitConverter.GetBytes((short)3).ToList());
+                file.AddRange(BitConverter.GetBytes((short)(texture.BitsPerPixel == 8 ? 8447 : 767)).ToList());
+                file.AddRange(BitConverter.GetBytes(texture.PaletteOffset).ToList());
+            }
+            if (file.Count % 16 != 0) file.AddRange(Enumerable.Repeat((byte)0x00, 16 - (file.Count % 16)).ToList());
+
+            header.FileNamesOffset = file.Count;
+            for (int i = 0; i < images.Count; i++) {
+                Texture texture = images[i];
+                file.AddRange(System.Text.Encoding.UTF8.GetBytes(texture.Name).ToList());
+                if (i < images.Count) file.Add(0);
+            }
+            if (file.Count % 16 != 0) file.AddRange(Enumerable.Repeat((byte)0x00, 16 - (file.Count % 16)).ToList());
+
+            file.RemoveRange(0, 4);
+            file.InsertRange(0, System.Text.Encoding.UTF8.GetBytes(header.FileExtension).ToList());
+
+            file.RemoveRange(4, 4);
+            file.InsertRange(4, BitConverter.GetBytes(1).ToList());
+
+            file.RemoveRange(8, 2);
+            file.InsertRange(8, BitConverter.GetBytes(header.FileCount).ToList());
+
+            file.RemoveRange(10, 2);
+            file.InsertRange(10, BitConverter.GetBytes(header.FileCountB).ToList());
+
+            file.RemoveRange(16, 4);
+            file.InsertRange(16, BitConverter.GetBytes(header.FileListOffset).ToList());
+
+            file.RemoveRange(20, 4);
+            file.InsertRange(20, BitConverter.GetBytes(header.FileInfoOffset).ToList());
+
+            file.RemoveRange(24, 4);
+            file.InsertRange(24, BitConverter.GetBytes(header.FileNamesOffset).ToList());
+
+            //IMPLEMENT PADDING HERE???
+            File.WriteAllBytes("__TEST.xet", file.ToArray());
+        }
     }
 
 }

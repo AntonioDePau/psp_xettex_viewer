@@ -6,6 +6,7 @@ using System.IO;
 using System.Windows.Forms;
 using ConsoleProject.DTO;
 using ConsoleProject.Services;
+using ConsoleProject.Utils;
 
 namespace ConsoleProject.View {
 
@@ -22,9 +23,12 @@ namespace ConsoleProject.View {
 
         public void ShowForm() {
             Form form = this.InitForm();
+
             panel = this.InitMainPanel();
             form.Controls.Add(panel);
+
             form.Controls.Add(this.InitInfoPanel());
+
             imageListBox = this.InitListBox();
             form.Controls.Add(imageListBox);
 
@@ -57,6 +61,17 @@ namespace ConsoleProject.View {
             form.ShowDialog();
         }
 
+        private Button InitRepackButton() {
+            Button repackButton = new Button {
+                Text = "Repack folder into XET",
+                Location = new Point(0, 45)
+            };
+            repackButton.Click += (s, e) => {
+                GetPngFiles();
+            };
+            return repackButton;
+        }
+
         private Form InitForm() {
             return new Form {
                 Text = "XetTex Viewer",
@@ -69,7 +84,7 @@ namespace ConsoleProject.View {
         private Panel InitMainPanel() {
             return new Panel {
                 Width = 200,
-                Height = 100,
+                Height = 50,
                 BackColor = Color.White,
                 AutoScroll = true,
                 Anchor = (AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right)
@@ -79,7 +94,7 @@ namespace ConsoleProject.View {
         private Button InitExtractButton() {
             Button extractButton = new Button {
                 Text = "Extract",
-                Location = new Point(0, 50)
+                Location = new Point(0, 20)
             };
             extractButton.Click += (s, e) => {
                 ExportService.WriteTextures(images);
@@ -95,6 +110,7 @@ namespace ConsoleProject.View {
 
             infoPanel.Controls.Add(labelInfo);
             infoPanel.Controls.Add(this.InitExtractButton());
+            infoPanel.Controls.Add(this.InitRepackButton());
             return infoPanel;
         }
 
@@ -150,5 +166,89 @@ namespace ConsoleProject.View {
             labelInfo.Text = t.Width + " x " + t.Height + " (" + t.BitsPerPixel + "bpp)";
         }
 
+        private void GetPngFiles() {
+            List<Texture> imgs = new List<Texture>();
+
+            using (var fbd = new FolderBrowserDialog()) {
+                DialogResult result = fbd.ShowDialog();
+
+                if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(fbd.SelectedPath)) {
+                    string[] files = Directory.GetFiles(fbd.SelectedPath);
+
+                    string extension = "Png";
+                    for (int f = 0; f < files.Length; f++) {
+                        string file = files[f];
+                        if (Path.GetExtension(file).ToLower() != "." + extension.ToLower()) continue;
+
+                        Image image1 = Image.FromFile(file);
+
+                        Bitmap bmp2 = new Bitmap(image1);
+
+                        List<Color> palette = new List<Color>();
+
+                        Console.WriteLine(bmp2.PixelFormat);
+                        for (int y = 0; y < bmp2.Height; y++) {
+                            for (int x = 0; x < bmp2.Height; x++) {
+                                Color c = bmp2.GetPixel(x, y);
+                                if (palette.IndexOf(c) == -1) {
+                                    if (palette.Count < 256) palette.Add(c);
+                                }
+                            }
+                        }
+
+                        while (palette.Count < 16) palette.Insert(0, Color.FromArgb(0, 0, 0, 0));
+
+                        if (palette.Count > 16) while (palette.Count < 256) palette.Insert(0, Color.FromArgb(0, 0, 0, 0));
+
+                        palette.Sort((x, y) => x.A.CompareTo(y.A));
+
+                        byte[] paletteBinary = new byte[(palette.Count) * 4];
+
+                        for (int i = 0; i < palette.Count; i++) {
+                            paletteBinary[i * 4] = palette[i].R;
+                            paletteBinary[i * 4 + 1] = palette[i].G;
+                            paletteBinary[i * 4 + 2] = palette[i].B;
+                            paletteBinary[i * 4 + 3] = palette[i].A;
+                        }
+                        Console.WriteLine("Total color count: " + palette.Count);
+
+                        Texture texture = new Texture(bmp2.Width, bmp2.Height);
+                        texture.BitsPerPixel = palette.Count <= 16 ? 4 : 8;
+                        texture.Colors = palette;
+                        texture.Palette = paletteBinary;
+                        texture.Bitmap = bmp2;
+                        texture.Name = Path.GetFileNameWithoutExtension(file);
+
+                        int BitMultiplier = 8 / texture.BitsPerPixel;
+                        int DataSize = (texture.Width * texture.Height) / BitMultiplier;
+
+                        byte[] Unswizzled = new byte[DataSize];
+                        int dataIndex = 0;
+                        for (int y = 0; y < bmp2.Height; y++) {
+                            for (int x = 0; x < bmp2.Width; x++) {
+                                Color c = bmp2.GetPixel(x, y);
+                                int colorIndex = texture.Colors.IndexOf(c);
+                                if (colorIndex == -1) colorIndex = ColorCompare.GetClosest(texture.Colors, c);
+                                if (texture.BitsPerPixel == 4) {
+                                    if (dataIndex % 2 == 0) {
+                                        Unswizzled[dataIndex / 2] = (byte)colorIndex;
+                                    } else {
+                                        Unswizzled[(dataIndex - 1) / 2] |= (byte)((byte)colorIndex << 4 & 0xf0);
+                                    }
+                                } else {
+                                    Unswizzled[dataIndex] = (byte)colorIndex;
+                                }
+                                dataIndex++;
+                            }
+                        }
+
+                        texture.Unswizzled = Unswizzled;
+                        texture.Binary = SwizzleService.Swizzle(texture);
+                        imgs.Add(texture);
+                    }
+                }
+            }
+            TextureConverter.SaveTexFile(imgs);
+        }
     }
 }
