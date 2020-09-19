@@ -173,7 +173,7 @@ namespace ConsoleProject.Services {
                 file.AddRange(System.Text.Encoding.UTF8.GetBytes(texture.Name).ToList());
                 if (i < images.Count) file.Add(0);
             }
-            if (file.Count % 16 != 0) file.AddRange(Enumerable.Repeat((byte) 0x00, 16 - (file.Count % 16)).ToList());
+            if (file.Count % 16 != 0) file.AddRange(Enumerable.Repeat((byte)0x00, 16 - (file.Count % 16)).ToList());
 
             file.RemoveRange(0, 4);
             file.InsertRange(0, System.Text.Encoding.UTF8.GetBytes(header.FileExtension).ToList());
