@@ -19,9 +19,10 @@ namespace ConsoleProject.View {
         private Bitmap obmp;
         private ListBox imageListBox;
         private List<Texture> images;
-        private Label labelInfo = new Label();
+        private Label labelImageInfo = new Label();
+        private Label labelZoomInfo = new Label();
 
-        public void ShowForm() {
+        public void ShowForm(string[] arguments = null) {
             Form form = this.InitForm();
 
             panel = this.InitMainPanel();
@@ -47,17 +48,10 @@ namespace ConsoleProject.View {
 
             form.DragDrop += (s, e) => {
                 string[] fileList = (string[])e.Data.GetData(DataFormats.FileDrop, false);
-                if (fileList.Length > 0) { // is this IF required?
-                    try {
-                        images = new TextureConverter().ParseFile(fileList[0]); // TODO only reads first file
-                        this.LoadImages();
-                    } catch (InvalidDataException ex) {
-                        Console.WriteLine(ex);
-                        MessageBox.Show("No images found!\nIncorrect file?");
-                    }
-                }
+				this.ParseNewFile(fileList);
             };
 
+			this.ParseNewFile(arguments);
             form.ShowDialog();
         }
 
@@ -75,9 +69,9 @@ namespace ConsoleProject.View {
         private Form InitForm() {
             return new Form {
                 Text = "XetTex Viewer",
-                Width = 800,
-                Height = 600,
-                MinimumSize = new Size(800, 600)
+                Width = 400,
+                Height = 200,
+                MinimumSize = new Size(400, 200)
             };
         }
 
@@ -108,7 +102,12 @@ namespace ConsoleProject.View {
                 Anchor = (AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Right)
             };
 
-            infoPanel.Controls.Add(labelInfo);
+            infoPanel.Controls.Add(labelImageInfo);
+			//Not sure if the following 3 lines should be here or somewhere else?
+			labelZoomInfo.Location = new Point(infoPanel.Width - 50, 0);
+			labelZoomInfo.Anchor = (AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Right);
+			labelZoomInfo.Text = "Zoom: " + zoomLevel;
+			infoPanel.Controls.Add(labelZoomInfo);			
             infoPanel.Controls.Add(this.InitExtractButton());
             infoPanel.Controls.Add(this.InitRepackButton());
             return infoPanel;
@@ -125,13 +124,34 @@ namespace ConsoleProject.View {
             };
             return listBox;
         }
+		
+		private void ParseNewFile(string[] fileList) {
+			if (fileList.Length > 0) { // is this IF required?
+				try {
+					images = new TextureConverter().ParseFile(fileList[0]); // TODO only reads first file
+					this.LoadImages();
+				} catch (InvalidDataException ex) {
+					Console.WriteLine(ex);
+					MessageBox.Show("No images found!\nIncorrect file?");
+				}
+			}
+		}
 
         private void DrawPicture(MouseEventArgs mouseEvent = null) {
+			if (obmp == null) return;
             int sv = panel.VerticalScroll.Value;
             panel.VerticalScroll.Value = sv >= 120 ? sv - 120 : sv;
-            if (mouseEvent != null) zoomLevel *= mouseEvent.Delta > 0 ? 1.10f : 0.90f;
+            if (mouseEvent != null) {
+				if ((Control.ModifierKeys & Keys.Control) == Keys.Control) {
+					zoomLevel += mouseEvent.Delta > 0 ? 0.01f : -0.01f;
+				} else {
+					zoomLevel *= mouseEvent.Delta > 0 ? 1.10f : 0.90f;
+				}
+			}
             zoomLevel = zoomLevel < .50f ? .50f : zoomLevel;
-            zoomLevel = zoomLevel > 50f ? 50f : zoomLevel;
+            zoomLevel = zoomLevel > 12f ? 12f : zoomLevel;
+			
+			labelZoomInfo.Text = "Zoom: " + zoomLevel.ToString("n2");
 
             int newW = (int)(obmp.Width * zoomLevel);
             int newH = (int)(obmp.Height * zoomLevel);
@@ -163,7 +183,7 @@ namespace ConsoleProject.View {
             bmp = t.Bitmap;
             obmp = bmp;
             DrawPicture();
-            labelInfo.Text = t.Width + " x " + t.Height + " (" + t.BitsPerPixel + "bpp)";
+            labelImageInfo.Text = t.Width + " x " + t.Height + " (" + t.BitsPerPixel + "bpp)";
         }
 
         private void GetPngFiles() {
