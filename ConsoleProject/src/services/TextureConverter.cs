@@ -89,6 +89,7 @@ namespace ConsoleProject.Services {
             for (int c = 0; c < pal.Entries.Length; c++) {
                 Color col = Color.FromArgb(palette[c * 4 + 3], palette[c * 4], palette[c * 4 + 1], palette[c * 4 + 2]);
                 pal.Entries[c] = col;
+                texture.Colors.Add(col);
             }
 
             bmp.Palette = pal;
@@ -165,7 +166,7 @@ namespace ConsoleProject.Services {
                 file.AddRange(BitConverter.GetBytes((short)(texture.BitsPerPixel == 8 ? 8447 : 767)).ToList());
                 file.AddRange(BitConverter.GetBytes(texture.PaletteOffset).ToList());
             }
-            if (file.Count % 16 != 0) file.AddRange(Enumerable.Repeat((byte)0x00, 16 - (file.Count % 16)).ToList());
+            if (file.Count % 16 != 0) file.AddRange(Enumerable.Repeat((byte) 0x00, 16 - (file.Count % 16)).ToList());
 
             header.FileNamesOffset = file.Count;
             for (int i = 0; i < images.Count; i++) {
@@ -173,7 +174,7 @@ namespace ConsoleProject.Services {
                 file.AddRange(System.Text.Encoding.UTF8.GetBytes(texture.Name).ToList());
                 if (i < images.Count) file.Add(0);
             }
-            if (file.Count % 16 != 0) file.AddRange(Enumerable.Repeat((byte)0x00, 16 - (file.Count % 16)).ToList());
+            if (file.Count % 16 != 0) file.AddRange(Enumerable.Repeat((byte) 0x00, 16 - (file.Count % 16)).ToList());
 
             file.RemoveRange(0, 4);
             file.InsertRange(0, System.Text.Encoding.UTF8.GetBytes(header.FileExtension).ToList());
@@ -182,10 +183,10 @@ namespace ConsoleProject.Services {
             file.InsertRange(4, BitConverter.GetBytes(1).ToList());
 
             file.RemoveRange(8, 2);
-            file.InsertRange(8, BitConverter.GetBytes(header.FileCount).ToList());
+            file.InsertRange(8, BitConverter.GetBytes((short)header.FileCount).ToList());
 
             file.RemoveRange(10, 2);
-            file.InsertRange(10, BitConverter.GetBytes(header.FileCountB).ToList());
+            file.InsertRange(10, BitConverter.GetBytes((short)header.FileCountB).ToList());
 
             file.RemoveRange(16, 4);
             file.InsertRange(16, BitConverter.GetBytes(header.FileListOffset).ToList());
