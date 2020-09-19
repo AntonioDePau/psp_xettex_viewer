@@ -89,6 +89,7 @@ namespace ConsoleProject.Services {
             for (int c = 0; c < pal.Entries.Length; c++) {
                 Color col = Color.FromArgb(palette[c * 4 + 3], palette[c * 4], palette[c * 4 + 1], palette[c * 4 + 2]);
                 pal.Entries[c] = col;
+                texture.Colors.Add(col);
             }
 
             bmp.Palette = pal;
