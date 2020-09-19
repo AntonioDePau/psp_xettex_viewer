@@ -231,11 +231,13 @@ namespace ConsoleProject.View {
                         if (log) {
                             Texture tex = images.Find(x => x.Name == Path.GetFileNameWithoutExtension(file));
                             if (tex != null) {
-                                Console.WriteLine(tex.Name + " original colors info:\n");
+                                logContent += tex.Name + " original colors info:\n";
                                 for (int ci = 0; ci < tex.Colors.Count; ci++) {
                                     Color c = tex.Colors[ci];
                                     if (palette.IndexOf(c) == -1) {
                                         logContent += "Color removed: " + c.ToString() + "\n";
+                                    } else {
+                                        logContent += "Color saved: " + c.ToString() + "\n";
                                     }                                       
                                 }
                             }
@@ -247,6 +249,15 @@ namespace ConsoleProject.View {
                         if (palette.Count > 16) while (palette.Count < 256) palette.Insert(0, Color.FromArgb(0, 0, 0, 0));
 
                         palette.Sort((x, y) => x.A.CompareTo(y.A));
+                        
+                        if (log) {
+                            logContent += "New palette:\n";
+                            for (int ci = 0; ci < palette.Count; ci++) {
+                                Color c = palette[ci];
+                                logContent += c.ToString() + "\n";
+                            }
+                        }
+                        logContent += "\n\n";
 
                         byte[] paletteBinary = new byte[(palette.Count) * 4];
 
