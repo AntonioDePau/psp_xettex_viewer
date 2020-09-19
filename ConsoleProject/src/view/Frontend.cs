@@ -104,8 +104,8 @@ namespace ConsoleProject.View {
 
             infoPanel.Controls.Add(labelImageInfo);
             //Not sure if the following 3 lines should be here or somewhere else?
-            labelZoomInfo.Location = new Point(infoPanel.Width - 50, 0);
-            labelZoomInfo.Anchor = (AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Right);
+            labelZoomInfo.Location = new Point(infoPanel.Width - 60, 0);
+            labelZoomInfo.Anchor = (AnchorStyles.Bottom | AnchorStyles.Right);
             labelZoomInfo.Text = "Zoom: " + zoomLevel;
             infoPanel.Controls.Add(labelZoomInfo);
             infoPanel.Controls.Add(this.InitExtractButton());
