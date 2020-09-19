@@ -48,10 +48,10 @@ namespace ConsoleProject.View {
 
             form.DragDrop += (s, e) => {
                 string[] fileList = (string[])e.Data.GetData(DataFormats.FileDrop, false);
-				this.ParseNewFile(fileList);
+                this.ParseNewFile(fileList);
             };
 
-			this.ParseNewFile(arguments);
+            this.ParseNewFile(arguments);
             form.ShowDialog();
         }
 
@@ -103,11 +103,11 @@ namespace ConsoleProject.View {
             };
 
             infoPanel.Controls.Add(labelImageInfo);
-			//Not sure if the following 3 lines should be here or somewhere else?
-			labelZoomInfo.Location = new Point(infoPanel.Width - 50, 0);
-			labelZoomInfo.Anchor = (AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Right);
-			labelZoomInfo.Text = "Zoom: " + zoomLevel;
-			infoPanel.Controls.Add(labelZoomInfo);
+            //Not sure if the following 3 lines should be here or somewhere else?
+            labelZoomInfo.Location = new Point(infoPanel.Width - 50, 0);
+            labelZoomInfo.Anchor = (AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Right);
+            labelZoomInfo.Text = "Zoom: " + zoomLevel;
+            infoPanel.Controls.Add(labelZoomInfo);
             infoPanel.Controls.Add(this.InitExtractButton());
             infoPanel.Controls.Add(this.InitRepackButton());
             return infoPanel;
@@ -124,34 +124,34 @@ namespace ConsoleProject.View {
             };
             return listBox;
         }
-		
-		private void ParseNewFile(string[] fileList) {
-			if (fileList.Length > 0) { // is this IF required?
-				try {
-					images = new TextureConverter().ParseFile(fileList[0]); // TODO only reads first file
-					this.LoadImages();
-				} catch (InvalidDataException ex) {
-					Console.WriteLine(ex);
-					MessageBox.Show("No images found!\nIncorrect file?");
-				}
-			}
-		}
+        
+        private void ParseNewFile(string[] fileList) {
+            if (fileList.Length > 0) { // is this IF required?
+                try {
+                    images = new TextureConverter().ParseFile(fileList[0]); // TODO only reads first file
+                    this.LoadImages();
+                } catch (InvalidDataException ex) {
+                    Console.WriteLine(ex);
+                    MessageBox.Show("No images found!\nIncorrect file?");
+                }
+            }
+        }
 
         private void DrawPicture(MouseEventArgs mouseEvent = null) {
-			if (obmp == null) return;
+            if (obmp == null) return;
             int sv = panel.VerticalScroll.Value;
             panel.VerticalScroll.Value = sv >= 120 ? sv - 120 : sv;
             if (mouseEvent != null) {
-				if ((Control.ModifierKeys & Keys.Control) == Keys.Control) {
-					zoomLevel += mouseEvent.Delta > 0 ? 0.01f : -0.01f;
-				} else {
-					zoomLevel *= mouseEvent.Delta > 0 ? 1.10f : 0.90f;
-				}
-			}
+                if ((Control.ModifierKeys & Keys.Control) == Keys.Control) {
+                    zoomLevel += mouseEvent.Delta > 0 ? 0.01f : -0.01f;
+                } else {
+                    zoomLevel *= mouseEvent.Delta > 0 ? 1.10f : 0.90f;
+                }
+            }
             zoomLevel = zoomLevel < .50f ? .50f : zoomLevel;
             zoomLevel = zoomLevel > 12f ? 12f : zoomLevel;
-			
-			labelZoomInfo.Text = "Zoom: " + zoomLevel.ToString("n2");
+            
+            labelZoomInfo.Text = "Zoom: " + zoomLevel.ToString("n2");
 
             int newW = (int)(obmp.Width * zoomLevel);
             int newH = (int)(obmp.Height * zoomLevel);
