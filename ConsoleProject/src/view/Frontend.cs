@@ -107,7 +107,7 @@ namespace ConsoleProject.View {
 			labelZoomInfo.Location = new Point(infoPanel.Width - 50, 0);
 			labelZoomInfo.Anchor = (AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Right);
 			labelZoomInfo.Text = "Zoom: " + zoomLevel;
-			infoPanel.Controls.Add(labelZoomInfo);			
+			infoPanel.Controls.Add(labelZoomInfo);
             infoPanel.Controls.Add(this.InitExtractButton());
             infoPanel.Controls.Add(this.InitRepackButton());
             return infoPanel;
