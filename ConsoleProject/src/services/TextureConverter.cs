@@ -165,7 +165,7 @@ namespace ConsoleProject.Services {
                 file.AddRange(BitConverter.GetBytes((short)(texture.BitsPerPixel == 8 ? 8447 : 767)).ToList());
                 file.AddRange(BitConverter.GetBytes(texture.PaletteOffset).ToList());
             }
-            if (file.Count % 16 != 0) file.AddRange(Enumerable.Repeat((byte) 0x00, 16 - (file.Count % 16)).ToList());
+            if (file.Count % 16 != 0) file.AddRange(Enumerable.Repeat((byte)0x00, 16 - (file.Count % 16)).ToList());
 
             header.FileNamesOffset = file.Count;
             for (int i = 0; i < images.Count; i++) {
