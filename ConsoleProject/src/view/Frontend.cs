@@ -219,7 +219,7 @@ namespace ConsoleProject.View {
                         string logContent = "";
                         
                         for (int y = 0; y < bmp2.Height; y++) {
-                            for (int x = 0; x < bmp2.Height; x++) {
+                            for (int x = 0; x < bmp2.Width; x++) {
                                 Color c = bmp2.GetPixel(x, y);
                                 if (palette.IndexOf(c) == -1) {
                                     if (palette.Count < 256) palette.Add(c);
