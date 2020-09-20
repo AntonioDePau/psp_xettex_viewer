@@ -30,19 +30,6 @@ namespace ConsoleProject.Services {
             }
         }
 
-        public List<Texture> ParseNewFile(string[] fileList) {
-            if (fileList != null) { // is this IF required?
-                try {
-                     // TODO only reads first file
-                    return ParseFile(fileList[0]);
-                } catch (InvalidDataException ex) {
-                    Console.WriteLine(ex);
-                    return null;
-                }
-            }
-            return new List<Texture>();
-        }
-
         private TexHeaderMap PopulateHeaderMap(BigEndianBinaryReader f) {
             return new TexHeaderMap {
                 FileExtension = System.Text.Encoding.UTF8.GetString(f.ReadBytes(4), 0, 4),
@@ -100,13 +87,13 @@ namespace ConsoleProject.Services {
         
         private Bitmap GetBitmapFromPalette(Texture texture) {
             Bitmap bmp = new Bitmap(texture.Width, texture.Height);
-            int row = 0;
+            int row = -1;
             int bitsPerPixelMultiplier = 8 / texture.BitsPerPixel;
             
             texture.Colors = GetColorsFromPalette(texture.Palette);
 
             for (int x = 0; x < texture.Unswizzled.Length * bitsPerPixelMultiplier; x++) {
-                if (x >= texture.Width + (texture.Width * row)) {
+                if (x % texture.Width == 0) {
                     row++;
                 }
 
