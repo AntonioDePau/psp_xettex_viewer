@@ -91,8 +91,8 @@ namespace ConsoleProject.Services {
         
         private List<Color> GetColorsFromPalette(byte[] palette) {
             List<Color> colors = new List<Color>();
-            for (int c = 0; c < palette.Length / 4; c++) {
-                Color col = Color.FromArgb(palette[c * 4 + 3], palette[c * 4], palette[c * 4 + 1], palette[c * 4 + 2]);
+            for (int i = 0; i < palette.Length; i+=4) {
+                Color col = Color.FromArgb(palette[i + 3], palette[i], palette[i + 1], palette[i + 2]);
                 colors.Add(col);
             }
             return colors;
