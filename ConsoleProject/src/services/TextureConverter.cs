@@ -80,26 +80,28 @@ namespace ConsoleProject.Services {
             Bitmap bmp = new Bitmap(texture.Width, texture.Height);
             int row = 0;
             int bitsPerPixelMultiplier = 8 / texture.BitsPerPixel;
-
-            List<System.Drawing.Color> colors = new List<System.Drawing.Color>();
             
             for (int c = 0; c < texture.Palette.Length / 4; c++) {
+                if (c == texture.Palette.Length / 4 - 1) Console.WriteLine(c + ": " + texture.Palette[c * 4] + " " + texture.Palette[c * 4 + 1] + " " + texture.Palette[c * 4 + 1] + " " + texture.Palette[c * 4 + 2]);
                 Color col = Color.FromArgb(texture.Palette[c * 4 + 3], texture.Palette[c * 4], texture.Palette[c * 4 + 1], texture.Palette[c * 4 + 2]);
                 texture.Colors.Add(col);
             }
 
-            for (int x = 0; x < texture.Unswizzled.Length; x++) {
+            for (int x = 0; x < texture.Unswizzled.Length * bitsPerPixelMultiplier; x++) {
                 if (x >= texture.Width + (texture.Width * row)) row++;
 
                 int col = (x - (texture.Width * row));
                 int dataIndex = x;
                 int paletteIndex = 0;
                 if (texture.BitsPerPixel == 4) {
-                    paletteIndex = (texture.Unswizzled[dataIndex] & 0xF0) >> 4 | (texture.Unswizzled[dataIndex] & 0x0F) << 4;
+                    if (x % 2 == 0) {
+                        paletteIndex = (texture.Unswizzled[dataIndex / 2] & 0x0f);
+                    } else {
+                        paletteIndex = (texture.Unswizzled[(dataIndex - 1) / 2] >> 4);                      
+                    }
                 } else {
                     paletteIndex = texture.Unswizzled[dataIndex];
                 }
-                int p = row * (texture.Width) + col;
                 Color c = texture.Colors[(int)paletteIndex];
                 bmp.SetPixel(col, row, c);
             }
