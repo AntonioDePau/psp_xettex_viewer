@@ -30,6 +30,19 @@ namespace ConsoleProject.Services {
             }
         }
 
+        public List<Texture> ParseNewFile(string[] fileList) {
+            if (fileList != null) { // is this IF required?
+                try {
+                     // TODO only reads first file
+                    return ParseFile(fileList[0]);
+                } catch (InvalidDataException ex) {
+                    Console.WriteLine(ex);
+                    return null;
+                }
+            }
+            return new List<Texture>();
+        }
+
         private TexHeaderMap PopulateHeaderMap(BigEndianBinaryReader f) {
             return new TexHeaderMap {
                 FileExtension = System.Text.Encoding.UTF8.GetString(f.ReadBytes(4), 0, 4),
@@ -76,19 +89,26 @@ namespace ConsoleProject.Services {
             return texture;
         }
         
+        private List<Color> GetColorsFromPalette(byte[] palette) {
+            List<Color> colors = new List<Color>();
+            for (int c = 0; c < palette.Length / 4; c++) {
+                Color col = Color.FromArgb(palette[c * 4 + 3], palette[c * 4], palette[c * 4 + 1], palette[c * 4 + 2]);
+                colors.Add(col);
+            }
+            return colors;
+        }
+        
         private Bitmap GetBitmapFromPalette(Texture texture) {
             Bitmap bmp = new Bitmap(texture.Width, texture.Height);
             int row = 0;
             int bitsPerPixelMultiplier = 8 / texture.BitsPerPixel;
             
-            for (int c = 0; c < texture.Palette.Length / 4; c++) {
-                if (c == texture.Palette.Length / 4 - 1) Console.WriteLine(c + ": " + texture.Palette[c * 4] + " " + texture.Palette[c * 4 + 1] + " " + texture.Palette[c * 4 + 1] + " " + texture.Palette[c * 4 + 2]);
-                Color col = Color.FromArgb(texture.Palette[c * 4 + 3], texture.Palette[c * 4], texture.Palette[c * 4 + 1], texture.Palette[c * 4 + 2]);
-                texture.Colors.Add(col);
-            }
+            texture.Colors = GetColorsFromPalette(texture.Palette);
 
             for (int x = 0; x < texture.Unswizzled.Length * bitsPerPixelMultiplier; x++) {
-                if (x >= texture.Width + (texture.Width * row)) row++;
+                if (x >= texture.Width + (texture.Width * row)) {
+                    row++;
+                }
 
                 int col = (x - (texture.Width * row));
                 int dataIndex = x;
@@ -116,8 +136,8 @@ namespace ConsoleProject.Services {
             int row = 0;
             int bitsPerPixelMultiplier = 8 / texture.BitsPerPixel;
 
-            System.Drawing.Imaging.ColorPalette pal = bmp.Palette;
-            List<System.Drawing.Color> colors = new List<System.Drawing.Color>();
+            ColorPalette pal = bmp.Palette;
+            List<Color> colors = new List<Color>();
             byte[] palette = texture.Palette;
             for (int c = 0; c < pal.Entries.Length; c++) {
                 Color col = Color.FromArgb(palette[c * 4 + 3], palette[c * 4], palette[c * 4 + 1], palette[c * 4 + 2]);
@@ -133,7 +153,9 @@ namespace ConsoleProject.Services {
             System.Runtime.InteropServices.Marshal.Copy(data.Scan0, bytes, 0, bytes.Length);
 
             for (int x = 0; x < texture.Unswizzled.Length; x++) {
-                if (x >= texture.Width + (texture.Width * row)) row++;
+                if (x >= texture.Width + (texture.Width * row)){
+                    row++;
+                }
 
                 int col = (x - (texture.Width * row));
                 int dataIndex = x;
@@ -164,7 +186,7 @@ namespace ConsoleProject.Services {
         }
 
         public static void SaveTexFile(List<Texture> images) {
-            TexHeaderMap header = new TexHeaderMap(images.Count);
+            TexHeaderMap header = new TexHeaderMap((short)images.Count);
 
             List<byte> file = Enumerable.Repeat((byte)0x00, 48).ToList();
             for (int i = 0; i < images.Count; i++) {
@@ -216,10 +238,10 @@ namespace ConsoleProject.Services {
             file.InsertRange(4, BitConverter.GetBytes(1).ToList());
 
             file.RemoveRange(8, 2);
-            file.InsertRange(8, BitConverter.GetBytes((short)header.FileCount).ToList());
+            file.InsertRange(8, BitConverter.GetBytes(header.FileCount).ToList());
 
             file.RemoveRange(10, 2);
-            file.InsertRange(10, BitConverter.GetBytes((short)header.FileCountB).ToList());
+            file.InsertRange(10, BitConverter.GetBytes(header.FileCountB).ToList());
 
             file.RemoveRange(16, 4);
             file.InsertRange(16, BitConverter.GetBytes(header.FileListOffset).ToList());
