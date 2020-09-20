@@ -58,6 +58,7 @@ namespace ConsoleProject.View {
         
         private void TryTextureFile(string[] fileList) {
             try {
+                //TODO: handle multiple files
                 images = new TextureConverter().ParseFile(fileList[0]);
                 LoadImages(fileList[0]);
             } catch {
