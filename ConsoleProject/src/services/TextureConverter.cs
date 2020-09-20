@@ -75,8 +75,39 @@ namespace ConsoleProject.Services {
 
             return texture;
         }
-
+        
         private Bitmap GetBitmapFromPalette(Texture texture) {
+            Bitmap bmp = new Bitmap(texture.Width, texture.Height);
+            int row = 0;
+            int bitsPerPixelMultiplier = 8 / texture.BitsPerPixel;
+
+            List<System.Drawing.Color> colors = new List<System.Drawing.Color>();
+            
+            for (int c = 0; c < texture.Palette.Length / 4; c++) {
+                Color col = Color.FromArgb(texture.Palette[c * 4 + 3], texture.Palette[c * 4], texture.Palette[c * 4 + 1], texture.Palette[c * 4 + 2]);
+                texture.Colors.Add(col);
+            }
+
+            for (int x = 0; x < texture.Unswizzled.Length; x++) {
+                if (x >= texture.Width + (texture.Width * row)) row++;
+
+                int col = (x - (texture.Width * row));
+                int dataIndex = x;
+                int paletteIndex = 0;
+                if (texture.BitsPerPixel == 4) {
+                    paletteIndex = (texture.Unswizzled[dataIndex] & 0xF0) >> 4 | (texture.Unswizzled[dataIndex] & 0x0F) << 4;
+                } else {
+                    paletteIndex = texture.Unswizzled[dataIndex];
+                }
+                int p = row * (texture.Width) + col;
+                Color c = texture.Colors[(int)paletteIndex];
+                bmp.SetPixel(col, row, c);
+            }
+
+            return bmp;
+        }
+
+        private Bitmap GetIndexedBitmapFromPalette(Texture texture) {
             Bitmap bmp = new Bitmap(texture.Width, texture.Height, PixelFormat.Format8bppIndexed);
             if (texture.BitsPerPixel == 4)
                 bmp = new Bitmap(texture.Width, texture.Height, PixelFormat.Format4bppIndexed);
