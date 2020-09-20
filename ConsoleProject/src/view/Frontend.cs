@@ -12,7 +12,7 @@ namespace ConsoleProject.View {
 
     public class Frontend {
 
-        private string AppName = "XetTex Viewer";
+        private static string AppName = "XetTex Viewer";
         private float zoomLevel = 1f;
         private Form form;
         private PictureBox pictureBox = new PictureBox();
@@ -24,7 +24,7 @@ namespace ConsoleProject.View {
         private Label labelImageInfo = new Label();
         private Label labelZoomInfo = new Label();
 
-        public void ShowForm(string[] arguments = null) {
+        public void ShowForm(string[] fileList = null) {
             form = this.InitForm();
 
             panel = this.InitMainPanel();
@@ -49,11 +49,23 @@ namespace ConsoleProject.View {
             };
 
             form.DragDrop += (s, e) => {
-                string[] fileList = (string[])e.Data.GetData(DataFormats.FileDrop, false);
-                this.ParseNewFile(fileList);
+                string[] filesDropped = (string[])e.Data.GetData(DataFormats.FileDrop, false);
+                List<Texture> listDropped = new TextureConverter().ParseNewFile(filesDropped);
+                if (listDropped != null) {
+                    images = listDropped;
+                    LoadImages(filesDropped[0]);
+                } else {
+                    MessageBox.Show("No images found!\nIncorrect file?");
+                }
             };
 
-            this.ParseNewFile(arguments);
+            List<Texture> list = new TextureConverter().ParseNewFile(fileList);
+            if (list != null) {
+                images = list;
+                LoadImages(fileList[0]);
+            } else {
+                MessageBox.Show("No images found!\nIncorrect file?");
+            }
             form.ShowDialog();
         }
 
@@ -126,21 +138,11 @@ namespace ConsoleProject.View {
             };
             return listBox;
         }
-        
-        private void ParseNewFile(string[] fileList) {
-            if (fileList.Length > 0) { // is this IF required?
-                try {
-                    images = new TextureConverter().ParseFile(fileList[0]); // TODO only reads first file
-                    this.LoadImages(fileList[0]);
-                } catch (InvalidDataException ex) {
-                    Console.WriteLine(ex);
-                    MessageBox.Show("No images found!\nIncorrect file?");
-                }
-            }
-        }
 
         private void DrawPicture(MouseEventArgs mouseEvent = null) {
-            if (obmp == null) return;
+            if (obmp == null) {
+                return;
+            }
             int sv = panel.VerticalScroll.Value;
             panel.VerticalScroll.Value = sv >= 120 ? sv - 120 : sv;
             if (mouseEvent != null) {
@@ -168,7 +170,7 @@ namespace ConsoleProject.View {
             pictureBox.Size = bmp.Size;
         }
 
-        private void LoadImages(string filename) {
+        public void LoadImages(string filename) {
             imageListBox.Items.Clear();
             for (int i = 0; i < images.Count; i++) {
                 imageListBox.Items.Add(images[i].Name);
@@ -222,12 +224,15 @@ namespace ConsoleProject.View {
                                 if (palette.IndexOf(c) == -1) {
                                     if (palette.Count < 256) palette.Add(c);
                                 }
-                                if (completeColors.IndexOf(c) == -1) completeColors.Add(c);
+                                if (completeColors.IndexOf(c) == -1) {
+                                    completeColors.Add(c);
+                                }
                             }
                         }
                         
                         logContent += "Saved " + palette.Count + " colors out of " + completeColors.Count + "\n";
                         
+                        //TODO: Replace with logger
                         if (log) {
                             Texture tex = images.Find(x => x.Name == Path.GetFileNameWithoutExtension(file));
                             if (tex != null) {
@@ -302,7 +307,9 @@ namespace ConsoleProject.View {
                                 dataIndex++;
                             }
                         }
-                        if (log) File.WriteAllText(file + ".log.txt", logContent);
+                        if (log) {
+                            File.WriteAllText(file + ".log.txt", logContent);
+                        }
 
                         texture.Unswizzled = Unswizzled;
                         texture.Binary = SwizzleService.Swizzle(texture);
