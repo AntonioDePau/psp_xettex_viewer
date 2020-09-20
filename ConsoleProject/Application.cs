@@ -6,8 +6,9 @@ namespace ConsoleProject {
     class Application {
 
         [STAThread]
-        public static void Main(string[] arguments) {
-            new Frontend().ShowForm(arguments);
+        public static void Main(string[] fileList) {
+            //TODO: validate the input arguments
+            new Frontend().ShowForm(fileList);
         }
     }
 }
