@@ -12,17 +12,20 @@ namespace ConsoleProject.View {
 
     public class Frontend {
 
+        private static string AppName = "XetTex Viewer";
         private float zoomLevel = 1f;
+        private Form form;
         private PictureBox pictureBox = new PictureBox();
         private Panel panel;
         private Bitmap bmp;
         private Bitmap obmp;
         private ListBox imageListBox;
         private List<Texture> images;
-        private Label labelInfo = new Label();
+        private Label labelImageInfo = new Label();
+        private Label labelZoomInfo = new Label();
 
-        public void ShowForm() {
-            Form form = this.InitForm();
+        public void ShowForm(string[] fileList = null) {
+            form = this.InitForm();
 
             panel = this.InitMainPanel();
             form.Controls.Add(panel);
@@ -46,19 +49,21 @@ namespace ConsoleProject.View {
             };
 
             form.DragDrop += (s, e) => {
-                string[] fileList = (string[])e.Data.GetData(DataFormats.FileDrop, false);
-                if (fileList.Length > 0) { // is this IF required?
-                    try {
-                        images = new TextureConverter().ParseFile(fileList[0]); // TODO only reads first file
-                        this.LoadImages();
-                    } catch (InvalidDataException ex) {
-                        Console.WriteLine(ex);
-                        MessageBox.Show("No images found!\nIncorrect file?");
-                    }
-                }
+                string[] filesDropped = (string[])e.Data.GetData(DataFormats.FileDrop, false);
+                TryTextureFile(filesDropped);
             };
-
+            TryTextureFile(fileList);
             form.ShowDialog();
+        }
+        
+        private void TryTextureFile(string[] fileList) {
+            try {
+                //TODO: handle multiple files
+                images = new TextureConverter().ParseFile(fileList[0]);
+                LoadImages(fileList[0]);
+            } catch {
+                MessageBox.Show("No images found!\nIncorrect file?");
+            }
         }
 
         private Button InitRepackButton() {
@@ -74,10 +79,10 @@ namespace ConsoleProject.View {
 
         private Form InitForm() {
             return new Form {
-                Text = "XetTex Viewer",
-                Width = 800,
-                Height = 600,
-                MinimumSize = new Size(800, 600)
+                Text = AppName,
+                Width = 400,
+                Height = 200,
+                MinimumSize = new Size(400, 200)
             };
         }
 
@@ -108,7 +113,12 @@ namespace ConsoleProject.View {
                 Anchor = (AnchorStyles.Left | AnchorStyles.Bottom | AnchorStyles.Right)
             };
 
-            infoPanel.Controls.Add(labelInfo);
+            infoPanel.Controls.Add(labelImageInfo);
+            //Not sure if the following 3 lines should be here or somewhere else?
+            labelZoomInfo.Location = new Point(infoPanel.Width - 60, 0);
+            labelZoomInfo.Anchor = (AnchorStyles.Bottom | AnchorStyles.Right);
+            labelZoomInfo.Text = "Zoom: " + zoomLevel;
+            infoPanel.Controls.Add(labelZoomInfo);
             infoPanel.Controls.Add(this.InitExtractButton());
             infoPanel.Controls.Add(this.InitRepackButton());
             return infoPanel;
@@ -127,11 +137,22 @@ namespace ConsoleProject.View {
         }
 
         private void DrawPicture(MouseEventArgs mouseEvent = null) {
+            if (obmp == null) {
+                return;
+            }
             int sv = panel.VerticalScroll.Value;
             panel.VerticalScroll.Value = sv >= 120 ? sv - 120 : sv;
-            if (mouseEvent != null) zoomLevel *= mouseEvent.Delta > 0 ? 1.10f : 0.90f;
+            if (mouseEvent != null) {
+                if ((Control.ModifierKeys & Keys.Control) == Keys.Control) {
+                    zoomLevel += mouseEvent.Delta > 0 ? 0.01f : -0.01f;
+                } else {
+                    zoomLevel *= mouseEvent.Delta > 0 ? 1.10f : 0.90f;
+                }
+            }
             zoomLevel = zoomLevel < .50f ? .50f : zoomLevel;
-            zoomLevel = zoomLevel > 50f ? 50f : zoomLevel;
+            zoomLevel = zoomLevel > 12f ? 12f : zoomLevel;
+            
+            labelZoomInfo.Text = "Zoom: " + zoomLevel.ToString("n2");
 
             int newW = (int)(obmp.Width * zoomLevel);
             int newH = (int)(obmp.Height * zoomLevel);
@@ -146,7 +167,7 @@ namespace ConsoleProject.View {
             pictureBox.Size = bmp.Size;
         }
 
-        private void LoadImages() {
+        private void LoadImages(string filename) {
             imageListBox.Items.Clear();
             for (int i = 0; i < images.Count; i++) {
                 imageListBox.Items.Add(images[i].Name);
@@ -156,6 +177,7 @@ namespace ConsoleProject.View {
                 imageListBox.SelectedIndex = 0;
             }
             DisplayImage();
+            form.Text = AppName + " - " + Path.GetFileName(filename);
         }
 
         private void DisplayImage() {
@@ -163,11 +185,12 @@ namespace ConsoleProject.View {
             bmp = t.Bitmap;
             obmp = bmp;
             DrawPicture();
-            labelInfo.Text = t.Width + " x " + t.Height + " (" + t.BitsPerPixel + "bpp)";
+            labelImageInfo.Text = t.Width + " x " + t.Height + " (" + t.BitsPerPixel + "bpp)";
         }
 
         private void GetPngFiles() {
             List<Texture> imgs = new List<Texture>();
+            bool log = true;
 
             using (var fbd = new FolderBrowserDialog()) {
                 DialogResult result = fbd.ShowDialog();
@@ -185,22 +208,58 @@ namespace ConsoleProject.View {
                         Bitmap bmp2 = new Bitmap(image1);
 
                         List<Color> palette = new List<Color>();
+                        
+                        List<Color> completeColors = new List<Color>();
 
                         Console.WriteLine(bmp2.PixelFormat);
+                                                
+                        string logContent = "";
+                        
                         for (int y = 0; y < bmp2.Height; y++) {
-                            for (int x = 0; x < bmp2.Height; x++) {
+                            for (int x = 0; x < bmp2.Width; x++) {
                                 Color c = bmp2.GetPixel(x, y);
                                 if (palette.IndexOf(c) == -1) {
                                     if (palette.Count < 256) palette.Add(c);
                                 }
+                                if (completeColors.IndexOf(c) == -1) {
+                                    completeColors.Add(c);
+                                }
                             }
                         }
-
+                        
+                        logContent += "Saved " + palette.Count + " colors out of " + completeColors.Count + "\n";
+                        
+                        //TODO: Replace with logger
+                        if (log) {
+                            Texture tex = images.Find(x => x.Name == Path.GetFileNameWithoutExtension(file));
+                            if (tex != null) {
+                                logContent += tex.Name + " original colors info:\n";
+                                for (int ci = 0; ci < tex.Colors.Count; ci++) {
+                                    Color c = tex.Colors[ci];
+                                    if (palette.IndexOf(c) == -1) {
+                                        logContent += "Color removed: " + c.ToString() + "\n";
+                                    } else {
+                                        logContent += "Color saved: " + c.ToString() + "\n";
+                                    }                                       
+                                }
+                            }
+                        }
+                        logContent += "\n\n";
+                        
                         while (palette.Count < 16) palette.Insert(0, Color.FromArgb(0, 0, 0, 0));
 
                         if (palette.Count > 16) while (palette.Count < 256) palette.Insert(0, Color.FromArgb(0, 0, 0, 0));
 
                         palette.Sort((x, y) => x.A.CompareTo(y.A));
+                        
+                        if (log) {
+                            logContent += "New palette:\n";
+                            for (int ci = 0; ci < palette.Count; ci++) {
+                                Color c = palette[ci];
+                                logContent += ci + ": " + c.ToString() + "\n";
+                            }
+                        }
+                        logContent += "\n\n";
 
                         byte[] paletteBinary = new byte[(palette.Count) * 4];
 
@@ -228,7 +287,11 @@ namespace ConsoleProject.View {
                             for (int x = 0; x < bmp2.Width; x++) {
                                 Color c = bmp2.GetPixel(x, y);
                                 int colorIndex = texture.Colors.IndexOf(c);
-                                if (colorIndex == -1) colorIndex = ColorCompare.GetClosest(texture.Colors, c);
+                                if (colorIndex == -1) {
+                                    colorIndex = ColorCompare.GetClosest(texture.Colors, c);
+                                    logContent += "Could not find: " + c.ToString() + "\n";
+                                    logContent += "Replaced with: " + texture.Colors[colorIndex].ToString() + "\n";
+                                }
                                 if (texture.BitsPerPixel == 4) {
                                     if (dataIndex % 2 == 0) {
                                         Unswizzled[dataIndex / 2] = (byte)colorIndex;
@@ -240,6 +303,9 @@ namespace ConsoleProject.View {
                                 }
                                 dataIndex++;
                             }
+                        }
+                        if (log) {
+                            File.WriteAllText(file + ".log.txt", logContent);
                         }
 
                         texture.Unswizzled = Unswizzled;

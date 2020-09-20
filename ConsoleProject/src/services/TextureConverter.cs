@@ -75,16 +75,56 @@ namespace ConsoleProject.Services {
 
             return texture;
         }
-
+        
+        private List<Color> GetColorsFromPalette(byte[] palette) {
+            List<Color> colors = new List<Color>();
+            for (int i = 0; i < palette.Length; i+=4) {
+                Color col = Color.FromArgb(palette[i + 3], palette[i], palette[i + 1], palette[i + 2]);
+                colors.Add(col);
+            }
+            return colors;
+        }
+        
         private Bitmap GetBitmapFromPalette(Texture texture) {
+            Bitmap bmp = new Bitmap(texture.Width, texture.Height);
+            int row = -1;
+            int bitsPerPixelMultiplier = 8 / texture.BitsPerPixel;
+            
+            texture.Colors = GetColorsFromPalette(texture.Palette);
+
+            for (int x = 0; x < texture.Unswizzled.Length * bitsPerPixelMultiplier; x++) {
+                if (x % texture.Width == 0) {
+                    row++;
+                }
+
+                int col = (x - (texture.Width * row));
+                int dataIndex = x;
+                int paletteIndex = 0;
+                if (texture.BitsPerPixel == 4) {
+                    if (x % 2 == 0) {
+                        paletteIndex = (texture.Unswizzled[dataIndex / 2] & 0x0f);
+                    } else {
+                        paletteIndex = (texture.Unswizzled[(dataIndex - 1) / 2] >> 4);                      
+                    }
+                } else {
+                    paletteIndex = texture.Unswizzled[dataIndex];
+                }
+                Color c = texture.Colors[(int)paletteIndex];
+                bmp.SetPixel(col, row, c);
+            }
+
+            return bmp;
+        }
+
+        private Bitmap GetIndexedBitmapFromPalette(Texture texture) {
             Bitmap bmp = new Bitmap(texture.Width, texture.Height, PixelFormat.Format8bppIndexed);
             if (texture.BitsPerPixel == 4)
                 bmp = new Bitmap(texture.Width, texture.Height, PixelFormat.Format4bppIndexed);
             int row = 0;
             int bitsPerPixelMultiplier = 8 / texture.BitsPerPixel;
 
-            System.Drawing.Imaging.ColorPalette pal = bmp.Palette;
-            List<System.Drawing.Color> colors = new List<System.Drawing.Color>();
+            ColorPalette pal = bmp.Palette;
+            List<Color> colors = new List<Color>();
             byte[] palette = texture.Palette;
             for (int c = 0; c < pal.Entries.Length; c++) {
                 Color col = Color.FromArgb(palette[c * 4 + 3], palette[c * 4], palette[c * 4 + 1], palette[c * 4 + 2]);
@@ -100,7 +140,9 @@ namespace ConsoleProject.Services {
             System.Runtime.InteropServices.Marshal.Copy(data.Scan0, bytes, 0, bytes.Length);
 
             for (int x = 0; x < texture.Unswizzled.Length; x++) {
-                if (x >= texture.Width + (texture.Width * row)) row++;
+                if (x >= texture.Width + (texture.Width * row)){
+                    row++;
+                }
 
                 int col = (x - (texture.Width * row));
                 int dataIndex = x;
@@ -131,7 +173,7 @@ namespace ConsoleProject.Services {
         }
 
         public static void SaveTexFile(List<Texture> images) {
-            TexHeaderMap header = new TexHeaderMap(images.Count);
+            TexHeaderMap header = new TexHeaderMap((short)images.Count);
 
             List<byte> file = Enumerable.Repeat((byte)0x00, 48).ToList();
             for (int i = 0; i < images.Count; i++) {
