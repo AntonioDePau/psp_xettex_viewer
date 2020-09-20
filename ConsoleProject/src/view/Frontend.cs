@@ -50,23 +50,19 @@ namespace ConsoleProject.View {
 
             form.DragDrop += (s, e) => {
                 string[] filesDropped = (string[])e.Data.GetData(DataFormats.FileDrop, false);
-                List<Texture> listDropped = new TextureConverter().ParseNewFile(filesDropped);
-                if (listDropped != null) {
-                    images = listDropped;
-                    LoadImages(filesDropped[0]);
-                } else {
-                    MessageBox.Show("No images found!\nIncorrect file?");
-                }
+                TryTextureFile(filesDropped);
             };
-
-            List<Texture> list = new TextureConverter().ParseNewFile(fileList);
-            if (list != null) {
-                images = list;
+            TryTextureFile(fileList);
+            form.ShowDialog();
+        }
+        
+        private void TryTextureFile(string[] fileList) {
+            try {
+                images = new TextureConverter().ParseFile(fileList[0]);
                 LoadImages(fileList[0]);
-            } else {
+            } catch {
                 MessageBox.Show("No images found!\nIncorrect file?");
             }
-            form.ShowDialog();
         }
 
         private Button InitRepackButton() {
