@@ -170,7 +170,7 @@ namespace ConsoleProject.View {
             pictureBox.Size = bmp.Size;
         }
 
-        public void LoadImages(string filename) {
+        private void LoadImages(string filename) {
             imageListBox.Items.Clear();
             for (int i = 0; i < images.Count; i++) {
                 imageListBox.Items.Add(images[i].Name);
@@ -259,7 +259,7 @@ namespace ConsoleProject.View {
                             logContent += "New palette:\n";
                             for (int ci = 0; ci < palette.Count; ci++) {
                                 Color c = palette[ci];
-                                logContent += c.ToString() + "\n";
+                                logContent += ci + ": " + c.ToString() + "\n";
                             }
                         }
                         logContent += "\n\n";
