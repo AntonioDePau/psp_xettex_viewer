@@ -1,10 +1,13 @@
 ﻿using System;
 using ConsoleProject.DTO;
+using log4net;
 
 namespace ConsoleProject.Services {
 
     // Swizzling textures is benefical to the GPU hardware's caching
     public static class SwizzleService {
+
+        private static readonly ILog LOG = LogManager.GetLogger(typeof(SwizzleService));
 
         public static byte[] Swizzle(Texture texture) {
             int offset = 0;
@@ -14,7 +17,7 @@ namespace ConsoleProject.Services {
             int width = (texture.Width * texture.BitsPerPixel) >> 3;
 
             byte[] destination = new byte[width * height];
-            Console.WriteLine("Max: " + destination.Length + " - " + texture.Unswizzled.Length);
+            LOG.Info("Max: " + destination.Length + " - " + texture.Unswizzled.Length);
 
             int rowblocks = (width / 16);
 

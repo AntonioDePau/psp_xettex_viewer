@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -7,12 +6,14 @@ using System.Windows.Forms;
 using ConsoleProject.DTO;
 using ConsoleProject.Services;
 using ConsoleProject.Utils;
+using log4net;
 
 namespace ConsoleProject.View {
 
     public class Frontend {
 
-        private static string AppName = "XetTex Viewer";
+        private static readonly ILog LOG = LogManager.GetLogger(typeof(Frontend));
+        private static readonly string APPNAME = "XetTex Viewer";
         private float zoomLevel = 1f;
         private Form form;
         private PictureBox pictureBox = new PictureBox();
@@ -52,7 +53,11 @@ namespace ConsoleProject.View {
                 string[] filesDropped = (string[])e.Data.GetData(DataFormats.FileDrop, false);
                 TryTextureFile(filesDropped);
             };
-            TryTextureFile(fileList);
+
+            if (fileList.Length > 0) {
+                TryTextureFile(fileList);
+            }
+
             form.ShowDialog();
         }
         
@@ -79,7 +84,7 @@ namespace ConsoleProject.View {
 
         private Form InitForm() {
             return new Form {
-                Text = AppName,
+                Text = APPNAME,
                 Width = 400,
                 Height = 200,
                 MinimumSize = new Size(400, 200)
@@ -177,7 +182,7 @@ namespace ConsoleProject.View {
                 imageListBox.SelectedIndex = 0;
             }
             DisplayImage();
-            form.Text = AppName + " - " + Path.GetFileName(filename);
+            form.Text = APPNAME + " - " + Path.GetFileName(filename);
         }
 
         private void DisplayImage() {
@@ -188,9 +193,9 @@ namespace ConsoleProject.View {
             labelImageInfo.Text = t.Width + " x " + t.Height + " (" + t.BitsPerPixel + "bpp)";
         }
 
+        // TODO refactor
         private void GetPngFiles() {
             List<Texture> imgs = new List<Texture>();
-            bool log = true;
 
             using (var fbd = new FolderBrowserDialog()) {
                 DialogResult result = fbd.ShowDialog();
@@ -204,16 +209,12 @@ namespace ConsoleProject.View {
                         if (Path.GetExtension(file).ToLower() != "." + extension.ToLower()) continue;
 
                         Image image1 = Image.FromFile(file);
-
                         Bitmap bmp2 = new Bitmap(image1);
 
                         List<Color> palette = new List<Color>();
-                        
                         List<Color> completeColors = new List<Color>();
 
-                        Console.WriteLine(bmp2.PixelFormat);
-                                                
-                        string logContent = "";
+                        LOG.Debug("Pixel format: " + bmp2.PixelFormat);
                         
                         for (int y = 0; y < bmp2.Height; y++) {
                             for (int x = 0; x < bmp2.Width; x++) {
@@ -226,25 +227,23 @@ namespace ConsoleProject.View {
                                 }
                             }
                         }
-                        
-                        logContent += "Saved " + palette.Count + " colors out of " + completeColors.Count + "\n";
-                        
-                        //TODO: Replace with logger
-                        if (log) {
+
+                        LOG.Info("Saved " + palette.Count + " colors out of " + completeColors.Count);
+
+                        if (LOG.IsDebugEnabled) {
                             Texture tex = images.Find(x => x.Name == Path.GetFileNameWithoutExtension(file));
                             if (tex != null) {
-                                logContent += tex.Name + " original colors info:\n";
+                                LOG.Debug(tex.Name + " original colors info:");
                                 for (int ci = 0; ci < tex.Colors.Count; ci++) {
                                     Color c = tex.Colors[ci];
                                     if (palette.IndexOf(c) == -1) {
-                                        logContent += "Color removed: " + c.ToString() + "\n";
+                                        LOG.Debug("Color removed: " + c.ToString());
                                     } else {
-                                        logContent += "Color saved: " + c.ToString() + "\n";
+                                        LOG.Debug("Color saved: " + c.ToString());
                                     }                                       
                                 }
                             }
                         }
-                        logContent += "\n\n";
                         
                         while (palette.Count < 16) palette.Insert(0, Color.FromArgb(0, 0, 0, 0));
 
@@ -252,14 +251,13 @@ namespace ConsoleProject.View {
 
                         palette.Sort((x, y) => x.A.CompareTo(y.A));
                         
-                        if (log) {
-                            logContent += "New palette:\n";
+                        if (LOG.IsDebugEnabled) {
+                            LOG.Debug("New palette:");
                             for (int ci = 0; ci < palette.Count; ci++) {
                                 Color c = palette[ci];
-                                logContent += ci + ": " + c.ToString() + "\n";
+                                LOG.Debug(ci + ": " + c.ToString());
                             }
                         }
-                        logContent += "\n\n";
 
                         byte[] paletteBinary = new byte[(palette.Count) * 4];
 
@@ -269,7 +267,7 @@ namespace ConsoleProject.View {
                             paletteBinary[i * 4 + 2] = palette[i].B;
                             paletteBinary[i * 4 + 3] = palette[i].A;
                         }
-                        Console.WriteLine("Total color count: " + palette.Count);
+                        LOG.Info("Total color count: " + palette.Count);
 
                         Texture texture = new Texture(bmp2.Width, bmp2.Height);
                         texture.BitsPerPixel = palette.Count <= 16 ? 4 : 8;
@@ -289,8 +287,8 @@ namespace ConsoleProject.View {
                                 int colorIndex = texture.Colors.IndexOf(c);
                                 if (colorIndex == -1) {
                                     colorIndex = ColorCompare.GetClosest(texture.Colors, c);
-                                    logContent += "Could not find: " + c.ToString() + "\n";
-                                    logContent += "Replaced with: " + texture.Colors[colorIndex].ToString() + "\n";
+                                    LOG.Info("Could not find: " + c.ToString());
+                                    LOG.Info("Replaced with: " + texture.Colors[colorIndex].ToString());
                                 }
                                 if (texture.BitsPerPixel == 4) {
                                     if (dataIndex % 2 == 0) {
@@ -304,9 +302,6 @@ namespace ConsoleProject.View {
                                 dataIndex++;
                             }
                         }
-                        if (log) {
-                            File.WriteAllText(file + ".log.txt", logContent);
-                        }
 
                         texture.Unswizzled = Unswizzled;
                         texture.Binary = SwizzleService.Swizzle(texture);
@@ -314,6 +309,7 @@ namespace ConsoleProject.View {
                     }
                 }
             }
+
             TextureConverter.SaveTexFile(imgs);
         }
     }
