@@ -6,10 +6,13 @@ using System.IO;
 using System.Linq;
 using ConsoleProject.DTO;
 using ConsoleProject.Utils;
+using log4net;
 
 namespace ConsoleProject.Services {
 
     public class TextureConverter {
+
+        private static readonly ILog LOG = LogManager.GetLogger(typeof(TextureConverter));
 
         public List<Texture> ParseFile(string filename) {
             using (BigEndianBinaryReader reader = new BigEndianBinaryReader(File.Open(filename, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))) {
@@ -19,7 +22,7 @@ namespace ConsoleProject.Services {
                     throw new InvalidDataException("Invalid file extension!");
                 }
 
-                Console.WriteLine("Image count:" + textureHeader.FileCount.ToString());
+                LOG.Info("Image count:" + textureHeader.FileCount.ToString());
 
                 List<Texture> images = new List<Texture>();
                 for (int i = 0; i < textureHeader.FileCount; i++) {
@@ -28,6 +31,109 @@ namespace ConsoleProject.Services {
 
                 return images;
             }
+        }
+
+        // TODO refactor
+        public static Texture RepackTexture(string file) {
+            string extension = ".png";
+            if (Path.GetExtension(file).ToLower() != extension) {
+                LOG.Warn("Selected file is not the required .png extension!");
+                throw new InvalidDataException("Invalid file extension!");
+            }
+
+            Image image1 = Image.FromFile(file);
+            Bitmap bmp2 = new Bitmap(image1);
+            LOG.Debug("Pixel format: " + bmp2.PixelFormat);
+
+            List<Color> palette = new List<Color>();
+            List<Color> completeColors = new List<Color>();
+
+            for (int y = 0; y < bmp2.Height; y++) {
+                for (int x = 0; x < bmp2.Width; x++) {
+                    Color color = bmp2.GetPixel(x, y);
+                    if (palette.IndexOf(color) == -1 && palette.Count < 256) {
+                        palette.Add(color);
+                    }
+                    if (completeColors.IndexOf(color) == -1) {
+                        completeColors.Add(color);
+                    }
+                }
+            }
+
+            LOG.Info("Saved " + palette.Count + " colors out of " + completeColors.Count);
+
+            // TODO add comment what this does
+            while (palette.Count < 16) {
+                palette.Insert(0, Color.FromArgb(0, 0, 0, 0));
+            }
+
+            // TODO is this condition is always TRUE from the above loop?
+            // TODO add comment what this does
+            if (palette.Count > 16) {
+                while (palette.Count < 256) {
+                    palette.Insert(0, Color.FromArgb(0, 0, 0, 0));
+                }
+            }
+
+            palette.Sort((x, y) => x.A.CompareTo(y.A));
+
+            if (LOG.IsDebugEnabled) {
+                LOG.Debug("New palette:");
+                for (int ci = 0; ci < palette.Count; ci++) {
+                    Color c = palette[ci];
+                    LOG.Debug(ci + ": " + c.ToString());
+                }
+            }
+
+            byte[] paletteBinary = new byte[(palette.Count) * 4];
+
+            LOG.Info("Total color count: " + palette.Count);
+
+            for (int i = 0; i < palette.Count; i++) {
+                paletteBinary[i * 4] = palette[i].R;
+                paletteBinary[i * 4 + 1] = palette[i].G;
+                paletteBinary[i * 4 + 2] = palette[i].B;
+                paletteBinary[i * 4 + 3] = palette[i].A;
+            }
+
+            Texture texture = new Texture(bmp2.Width, bmp2.Height);
+            texture.BitsPerPixel = palette.Count <= 16 ? 4 : 8;
+            texture.Colors = palette;
+            texture.Palette = paletteBinary;
+            texture.Bitmap = bmp2;
+            texture.Name = Path.GetFileNameWithoutExtension(file);
+
+            int BitMultiplier = 8 / texture.BitsPerPixel;
+            int DataSize = (texture.Width * texture.Height) / BitMultiplier;
+
+            byte[] Unswizzled = new byte[DataSize];
+            int dataIndex = 0;
+            for (int y = 0; y < bmp2.Height; y++) {
+                for (int x = 0; x < bmp2.Width; x++) {
+                    Color c = bmp2.GetPixel(x, y);
+                    int colorIndex = texture.Colors.IndexOf(c);
+                    if (colorIndex == -1) {
+                        colorIndex = ColorCompare.GetClosest(texture.Colors, c);
+                        LOG.Info("Could not find: " + c.ToString());
+                        LOG.Info("Replaced with: " + texture.Colors[colorIndex].ToString());
+                    }
+                    if (texture.BitsPerPixel == 4) {
+                        if (dataIndex % 2 == 0) {
+                            Unswizzled[dataIndex / 2] = (byte)colorIndex;
+                        } else {
+                            Unswizzled[(dataIndex - 1) / 2] |= (byte)((byte)colorIndex << 4 & 0xf0);
+                        }
+                    } else {
+                        Unswizzled[dataIndex] = (byte)colorIndex;
+                    }
+                    dataIndex++;
+                }
+            }
+
+            texture.Unswizzled = Unswizzled;
+            texture.Binary = SwizzleService.Swizzle(texture);
+
+            return texture;
         }
 
         private TexHeaderMap PopulateHeaderMap(BigEndianBinaryReader f) {
@@ -71,7 +177,7 @@ namespace ConsoleProject.Services {
             texture.Unswizzled = UnSwizzle(texture);
             texture.Bitmap = GetBitmapFromPalette(texture);
 
-            Console.WriteLine(texture);
+            LOG.Info(texture);
 
             return texture;
         }
@@ -109,7 +215,7 @@ namespace ConsoleProject.Services {
                 } else {
                     paletteIndex = texture.Unswizzled[dataIndex];
                 }
-                Color c = texture.Colors[(int)paletteIndex];
+                Color c = texture.Colors[paletteIndex];
                 bmp.SetPixel(col, row, c);
             }
 
@@ -179,7 +285,8 @@ namespace ConsoleProject.Services {
             for (int i = 0; i < images.Count; i++) {
                 Texture texture = images[i];
                 texture.DataOffset = file.Count;
-                Console.WriteLine(texture.Binary.Length);
+                LOG.Debug(texture.Binary.Length);
+
                 file.AddRange(texture.Binary.ToList());
                 texture.PaletteOffset = file.Count;
                 file.AddRange(texture.Palette.ToList());
@@ -225,10 +332,10 @@ namespace ConsoleProject.Services {
             file.InsertRange(4, BitConverter.GetBytes(1).ToList());
 
             file.RemoveRange(8, 2);
-            file.InsertRange(8, BitConverter.GetBytes((short)header.FileCount).ToList());
+            file.InsertRange(8, BitConverter.GetBytes(header.FileCount).ToList());
 
             file.RemoveRange(10, 2);
-            file.InsertRange(10, BitConverter.GetBytes((short)header.FileCountB).ToList());
+            file.InsertRange(10, BitConverter.GetBytes(header.FileCountB).ToList());
 
             file.RemoveRange(16, 4);
             file.InsertRange(16, BitConverter.GetBytes(header.FileListOffset).ToList());
