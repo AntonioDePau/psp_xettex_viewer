@@ -4,11 +4,11 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Windows.Forms;
-using ConsoleProject.DTO;
-using ConsoleProject.Services;
+using XetEditor.DTO;
+using XetEditor.Services;
 using log4net;
 
-namespace ConsoleProject.View {
+namespace XetEditor.View {
 
     public class Frontend {
 

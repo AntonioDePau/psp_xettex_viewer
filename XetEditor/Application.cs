@@ -1,8 +1,8 @@
 ﻿using System;
-using ConsoleProject.View;
+using XetEditor.View;
 using log4net;
 
-namespace ConsoleProject {
+namespace XetEditor {
 
     class Application {
 

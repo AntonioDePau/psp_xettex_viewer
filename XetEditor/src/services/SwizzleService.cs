@@ -1,8 +1,8 @@
 ﻿using System;
-using ConsoleProject.DTO;
+using XetEditor.DTO;
 using log4net;
 
-namespace ConsoleProject.Services {
+namespace XetEditor.Services {
 
     // Swizzling textures is benefical to the GPU hardware's caching
     public static class SwizzleService {

@@ -5,8 +5,8 @@
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
     <ProjectGuid>{69392609-8376-4438-B327-A0CA2AEF24E9}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>ConsoleProject</RootNamespace>
-    <AssemblyName>ConsoleProject</AssemblyName>
+    <RootNamespace>XetEditor</RootNamespace>
+    <AssemblyName>XetEditor</AssemblyName>
     <TargetFrameworkVersion>v4.7</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
@@ -53,10 +53,10 @@
     <Folder Include="src\services\" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
     <None Include="log4net.config">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -4,11 +4,11 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
-using ConsoleProject.DTO;
-using ConsoleProject.Utils;
+using XetEditor.DTO;
+using XetEditor.Utils;
 using log4net;
 
-namespace ConsoleProject.Services {
+namespace XetEditor.Services {
 
     public class TextureConverter {
 

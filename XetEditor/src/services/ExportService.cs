@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
-using ConsoleProject.DTO;
+using XetEditor.DTO;
 using log4net;
 
-namespace ConsoleProject.Services {
+namespace XetEditor.Services {
 
     public static class ExportService {
 
