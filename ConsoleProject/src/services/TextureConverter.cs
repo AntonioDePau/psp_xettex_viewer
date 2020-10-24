@@ -6,10 +6,13 @@ using System.IO;
 using System.Linq;
 using ConsoleProject.DTO;
 using ConsoleProject.Utils;
+using log4net;
 
 namespace ConsoleProject.Services {
 
     public class TextureConverter {
+
+        private static readonly ILog LOG = LogManager.GetLogger(typeof(TextureConverter));
 
         public List<Texture> ParseFile(string filename) {
             using (BigEndianBinaryReader reader = new BigEndianBinaryReader(File.Open(filename, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))) {
@@ -19,7 +22,7 @@ namespace ConsoleProject.Services {
                     throw new InvalidDataException("Invalid file extension!");
                 }
 
-                Console.WriteLine("Image count:" + textureHeader.FileCount.ToString());
+                LOG.Info("Image count:" + textureHeader.FileCount.ToString());
 
                 List<Texture> images = new List<Texture>();
                 for (int i = 0; i < textureHeader.FileCount; i++) {
@@ -71,7 +74,7 @@ namespace ConsoleProject.Services {
             texture.Unswizzled = UnSwizzle(texture);
             texture.Bitmap = GetBitmapFromPalette(texture);
 
-            Console.WriteLine(texture);
+            LOG.Info(texture);
 
             return texture;
         }
@@ -179,7 +182,8 @@ namespace ConsoleProject.Services {
             for (int i = 0; i < images.Count; i++) {
                 Texture texture = images[i];
                 texture.DataOffset = file.Count;
-                Console.WriteLine(texture.Binary.Length);
+                LOG.Debug(texture.Binary.Length);
+
                 file.AddRange(texture.Binary.ToList());
                 texture.PaletteOffset = file.Count;
                 file.AddRange(texture.Palette.ToList());
