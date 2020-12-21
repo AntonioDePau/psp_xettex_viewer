@@ -16,16 +16,15 @@ namespace XetEditor.View {
         private static readonly string APPNAME = "XetTex Viewer";
         private float zoomLevel = 1f;
         private Form form;
-        private PictureBox pictureBox = new PictureBox();
+        private PictureBox pictureBox;
         private Panel panel;
         private Bitmap bmp;
-        private Bitmap obmp;
         private ListBox imageListBox;
         private List<Texture> images;
         private Label labelImageInfo = new Label();
         private Label labelZoomInfo = new Label();
 
-        public void ShowForm(string[] fileList = null) {
+        public void ShowForm() {
             form = this.InitForm();
 
             panel = this.InitMainPanel();
@@ -36,7 +35,9 @@ namespace XetEditor.View {
             imageListBox = this.InitListBox();
             form.Controls.Add(imageListBox);
 
+            pictureBox = new PictureBox();
             panel.Controls.Add(pictureBox);
+
             panel.MouseWheel += (s, e) => {
                 DrawPicture(e);
             };
@@ -54,18 +55,14 @@ namespace XetEditor.View {
                 TryTextureFile(filesDropped);
             };
 
-            if (fileList.Length > 0) {
-                TryTextureFile(fileList);
-            }
-
             form.ShowDialog();
         }
 
         private void TryTextureFile(string[] fileList) {
             try {
-                //TODO: handle multiple files
+                //TODO: handle multiple files -> not
                 images = new TextureConverter().ParseFile(fileList[0]);
-                LoadImages(fileList[0]);
+                LoadImages();
             } catch {
                 MessageBox.Show("No images found!\nIncorrect file?");
             }
@@ -142,26 +139,31 @@ namespace XetEditor.View {
         }
 
         private void DrawPicture(MouseEventArgs mouseEvent = null) {
-            if (obmp == null) {
-                return;
-            }
+            Bitmap obmp = bmp;
+
             int sv = panel.VerticalScroll.Value;
             panel.VerticalScroll.Value = sv >= 120 ? sv - 120 : sv;
             if (mouseEvent != null) {
+                //LOG.Debug(mouseEvent.Delta); //120
                 if ((Control.ModifierKeys & Keys.Control) == Keys.Control) {
-                    zoomLevel += mouseEvent.Delta > 0 ? 0.01f : -0.01f;
+                    zoomLevel = mouseEvent.Delta > 0 ? 1.01f : 0.99f; // fine-grained zoom
                 } else {
-                    zoomLevel *= mouseEvent.Delta > 0 ? 1.10f : 0.90f;
+                    zoomLevel = mouseEvent.Delta > 0 ? 1.10f : 0.90f; // default zoom
                 }
             }
-            zoomLevel = zoomLevel < .50f ? .50f : zoomLevel;
-            zoomLevel = zoomLevel > 12f ? 12f : zoomLevel;
-
+            LOG.Debug("ZoomLevel:"+zoomLevel);
             labelZoomInfo.Text = "Zoom: " + zoomLevel.ToString("n2");
 
+            // TODO rework zoom
             int newW = (int)(obmp.Width * zoomLevel);
             int newH = (int)(obmp.Height * zoomLevel);
-            bmp = new Bitmap(newW, newH);
+            LOG.Debug(newW + " " + newH);
+            if (newW < obmp.Width * 0.5f || newH < obmp.Height * 0.5f) {
+                bmp = new Bitmap(obmp.Width, obmp.Height); // reset dimensions to avoid underflow
+            } else {
+                bmp = new Bitmap(newW, newH); // apply zoom
+            }
+
 
             using (Graphics g = Graphics.FromImage(bmp)) {
                 g.InterpolationMode = InterpolationMode.NearestNeighbor;
@@ -172,7 +174,7 @@ namespace XetEditor.View {
             pictureBox.Size = bmp.Size;
         }
 
-        private void LoadImages(string filename) {
+        private void LoadImages() {
             imageListBox.Items.Clear();
             for (int i = 0; i < images.Count; i++) {
                 imageListBox.Items.Add(images[i].Name);
@@ -182,13 +184,11 @@ namespace XetEditor.View {
                 imageListBox.SelectedIndex = 0;
             }
             DisplayImage();
-            form.Text = APPNAME + " - " + Path.GetFileName(filename);
         }
 
         private void DisplayImage() {
             Texture t = images[imageListBox.SelectedIndex];
             bmp = t.Bitmap;
-            obmp = bmp;
             DrawPicture();
             labelImageInfo.Text = t.Width + " x " + t.Height + " (" + t.BitsPerPixel + "bpp)";
         }

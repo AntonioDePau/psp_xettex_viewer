@@ -10,10 +10,8 @@ namespace XetEditor {
 
         [STAThread]
         public static void Main(string[] args) {
-            LOG.Info("Starting Application...");
-
-            //TODO: validate the input arguments
-            new Frontend().ShowForm(args);
+            LOG.Info("Starting Application!");
+            new Frontend().ShowForm();
         }
     }
 }
