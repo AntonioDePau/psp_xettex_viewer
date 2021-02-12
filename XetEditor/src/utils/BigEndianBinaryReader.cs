@@ -2,7 +2,7 @@
 using System.IO;
 using System.Linq;
 
-namespace ConsoleProject.Utils {
+namespace XetEditor.Utils {
 
     public class BigEndianBinaryReader : BinaryReader {
 

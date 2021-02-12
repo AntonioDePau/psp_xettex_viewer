@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
-using ConsoleProject.DTO;
+using XetEditor.DTO;
+using log4net;
 
-namespace ConsoleProject.Services {
+namespace XetEditor.Services {
 
     public static class ExportService {
+
+        private static readonly ILog LOG = LogManager.GetLogger(typeof(ExportService));
 
         public static void WriteBitmap(List<Texture> images) {
             if (images == null || images.Count == 0) return;
@@ -43,7 +46,7 @@ namespace ConsoleProject.Services {
                 }
 
                 int bitsPerPixelMultiplier = 8 / img.BitsPerPixel;
-                Console.WriteLine("BPP: " + img.BitsPerPixel);
+                LOG.Info("BPP: " + img.BitsPerPixel);
                 for (int y = (img.Height) - 1; y >= 0; y--) {
                     for (int x = 0; x < (img.Width / bitsPerPixelMultiplier); x++) {
                         byte by = img.Unswizzled[(y * (img.Width / bitsPerPixelMultiplier)) + x];
@@ -85,7 +88,7 @@ namespace ConsoleProject.Services {
             }
 
             for (int i = 0; i < images.Count; i++) {
-                Console.WriteLine(images[i].Bitmap.PixelFormat.ToString());
+                LOG.Info(images[i].Bitmap.PixelFormat.ToString());
                 images[i].Bitmap.Save(directoryName + "/" + images[i].Name + "." + extension.ToLower(), format);
             }
         }

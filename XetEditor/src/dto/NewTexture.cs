@@ -1,4 +1,4 @@
-﻿namespace ConsoleProject.DTO {
+﻿namespace XetEditor.DTO {
     public class NewTexture {
         public int Width { get; set; }
         public int Height { get; set; }

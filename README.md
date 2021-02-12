@@ -3,13 +3,6 @@ A tool to display unswizzled 4/8bpp TEX (or XET) psp texture files (for Lord of 
 
 Drag a XET file over the exe or the form and it will show you the first texture, as well as the list of textures that you can select in the right-side list.
 The "Extract" button saves the textures to the Xet2Png directory as PNG files.
-~~You need to close the first window for the next one to appear.~~
-
-TODO:
-- ~~Display the form even if no file has been dragged on the exe~~ Done
-- ~~Manage new files once the tool is open (drag-n-drop, browse file)~~ Done
-- ~~Extract textures to a folder (save as BMP probably)~~ Done
-- Repack extracted textures into a XET file
 
 XET file format:
 - 4 first bytes: file format --> XET. (LE, would be .TEX in BE)
@@ -34,5 +27,6 @@ Image info:
 - 4 next bytes : offset of the beginning of the actual image's data
 
 
-
-Huge thanks to https://github.com/nickworonekin whose https://github.com/nickworonekin/puyotools repo allowed me to unswizzle textures!
+# Credits
+Huge thanks to https://github.com/nickworonekin whose https://github.com/nickworonekin/puyotools
+repo allowed to unswizzle textures!

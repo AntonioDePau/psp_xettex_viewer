@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 
-namespace ConsoleProject.DTO {
+namespace XetEditor.DTO {
 
     public class Texture {
 

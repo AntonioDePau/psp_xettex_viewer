@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 
-namespace ConsoleProject.Utils {
+namespace XetEditor.Utils {
 
     public static class ColorCompare {
 

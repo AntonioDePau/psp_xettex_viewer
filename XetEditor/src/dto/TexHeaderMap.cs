@@ -1,4 +1,4 @@
-﻿namespace ConsoleProject.DTO {
+﻿namespace XetEditor.DTO {
 
     public class TexHeaderMap {
 
