@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -23,9 +23,11 @@ namespace ConsoleProject.Services {
 
                 List<Texture> images = new List<Texture>();
                 for (int i = 0; i < textureHeader.FileCount; i++) {
-                    images.Add(this.PopulateTexture(i, reader, textureHeader));
+					//if(i>0) continue;
+					Console.WriteLine(i + "/" + textureHeader.FileCount);
+                    images.AddRange((this.PopulateTexture(i, reader, textureHeader)).ToList());
                 }
-
+				Console.WriteLine(images.Count);
                 return images;
             }
         }
@@ -42,38 +44,57 @@ namespace ConsoleProject.Services {
                 FileNamesOffset = f.ReadInt32()
             };
         }
-
-        private Texture PopulateTexture(int i, BigEndianBinaryReader f, TexHeaderMap textureHeader) {
-            Texture texture = new Texture();
-
+		
+		//Return List/Array of textures based on the MultiSizeCount
+        private Texture[] PopulateTexture(int i, BigEndianBinaryReader f, TexHeaderMap textureHeader) {
+            Texture textureInfo = new Texture();
             f.BaseStream.Seek(textureHeader.FileListOffset + (4 * i) + (12 * i), SeekOrigin.Begin);
-            texture.BitsPerPixel = f.ReadInt32() == 5 ? 8 : 4; // TODO documentation
-            texture.Number = f.ReadInt32();
-            texture.Unk08 = f.ReadInt32();
-            texture.InfoOffset = f.ReadInt32();
+            textureInfo.BitsPerPixel = f.ReadInt16() == 5 ? 8 : 4; // TODO documentation
+            textureInfo.MultiSizeCount = (short)(f.ReadInt16() + 1); // TODO documentation
+            textureInfo.Number = f.ReadInt32();
+            textureInfo.Unk08 = f.ReadInt32();
+            textureInfo.InfoOffset = f.ReadInt32();
+			
+			Texture[] textureArray = new Texture[textureInfo.MultiSizeCount];
 
-            f.BaseStream.Seek(texture.InfoOffset, SeekOrigin.Begin);
-            texture.Width = f.ReadInt16();
-            texture.Height = f.ReadInt16();
-            texture.Largest = f.ReadInt16();
-            texture.Unk06 = f.ReadInt16();
-            texture.DataOffset = f.ReadInt32();
+			for(int ct = 0; ct < textureInfo.MultiSizeCount; ct++){
+				Texture texture = new Texture();
+				texture.BitsPerPixel = textureInfo.BitsPerPixel;
+				texture.Number = textureInfo.Number;
+				texture.Unk08 = textureInfo.Unk08;
+				texture.InfoOffset = textureInfo.InfoOffset;
+				f.BaseStream.Seek(texture.InfoOffset + (ct * 12), SeekOrigin.Begin);
+				texture.Width = f.ReadInt16();
+				texture.Height = f.ReadInt16();
+				texture.Largest = f.ReadInt16();
+				texture.Unk06 = f.ReadInt16();
+				texture.DataOffset = f.ReadInt32();
 
-            f.BaseStream.Seek(textureHeader.FileInfoOffset + 4 + (8 * i), SeekOrigin.Begin);
-            texture.PaletteOffset = f.ReadInt32();
+				f.BaseStream.Seek(textureHeader.FileInfoOffset + 4 + (8 * i), SeekOrigin.Begin);
+				texture.PaletteOffset = f.ReadInt32();
 
-            byte[] nb = f.ReadAt(textureHeader.FileNamesOffset, (int)f.BaseStream.Length - textureHeader.FileNamesOffset);
-            string name = System.Text.Encoding.UTF8.GetString(nb, 0, nb.Length).Split('\x00')[i];
-            texture.Name = name;
+				byte[] nb = f.ReadAt(textureHeader.FileNamesOffset, (int)f.BaseStream.Length - textureHeader.FileNamesOffset);
+				string name = System.Text.Encoding.UTF8.GetString(nb, 0, nb.Length).Split('\x00')[i];
+				string extendedName = "";
+				if(textureInfo.MultiSizeCount > 0){
+					extendedName = " (" + (ct+1) + "_" + (textureInfo.MultiSizeCount) + ")";
+				}
+				texture.Name = name + extendedName;
+				//if(name != "GTP_GLOW1") return new Texture[0];
 
-            texture.Binary = f.ReadAt(texture.DataOffset, texture.PaletteOffset - texture.DataOffset);
-            texture.Palette = f.ReadAt(texture.PaletteOffset, texture.InfoOffset - texture.PaletteOffset);
-            texture.Unswizzled = UnSwizzle(texture);
-            texture.Bitmap = GetBitmapFromPalette(texture);
+				//texture.Binary = f.ReadAt(texture.DataOffset, texture.PaletteOffset - texture.DataOffset);
+				texture.Binary = f.ReadAt(texture.DataOffset, ((texture.Width * texture.Height) / (texture.BitsPerPixel == 4 ? 2 : 1)) * Math.Max(Math.Max(16 / texture.Width, 1), Math.Max(16 / texture.Height, 1)));
+				texture.Palette = f.ReadAt(texture.PaletteOffset, texture.InfoOffset - texture.PaletteOffset);
+				Console.WriteLine(texture.Name);
+				texture.Unswizzled = UnSwizzle(texture);
+				//texture.Unswizzled = texture.Binary;
+				texture.Bitmap = GetBitmapFromPalette(texture);
 
-            Console.WriteLine(texture);
-
-            return texture;
+				textureArray[ct] = texture;
+				Console.WriteLine(texture);
+			}
+			Console.WriteLine("Done!");
+            return textureArray;
         }
         
         private List<Color> GetColorsFromPalette(byte[] palette) {
@@ -166,6 +187,7 @@ namespace ConsoleProject.Services {
             NewTexture swizzledTexture = new NewTexture {
                 Width = texture.Width,
                 Height = texture.Height,
+				Largest = texture.Largest,
                 BitsPerPixel = texture.BitsPerPixel,
                 Binary = texture.Binary
             };
