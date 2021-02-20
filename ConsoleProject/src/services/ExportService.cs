@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -59,13 +59,14 @@ namespace ConsoleProject.Services {
             }
         }
 
-        public static void WriteTextures(List<Texture> images) {
+        public static void WriteTextures(List<Texture> images, string epath) {
             if (images == null || images.Count == 0) {
                 return;
             }
 
             string extension = "Png";
-            string directoryName = "Xet2" + extension;
+            //string directoryName = "Xet2" + extension;
+            string directoryName = epath;
             ImageFormat format = ImageFormat.Bmp;
 
             switch (extension) {
