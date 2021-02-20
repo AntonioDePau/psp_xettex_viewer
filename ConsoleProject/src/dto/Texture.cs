@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 
@@ -9,6 +9,7 @@ namespace ConsoleProject.DTO {
         public int Width { get; set; }
         public int Height { get; set; }
         public short Largest { get; set; }
+        public short MultiSizeCount { get; set; }
         public short Unk06 { get; set; }
         public int DataOffset { get; set; }
         public int BitsPerPixel { get; set; }
