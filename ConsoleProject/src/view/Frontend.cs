@@ -23,6 +23,7 @@ namespace ConsoleProject.View {
         private List<Texture> images;
         private Label labelImageInfo = new Label();
         private Label labelZoomInfo = new Label();
+		private string currentFile;
 
         public void ShowForm(string[] fileList = null) {
             form = this.InitForm();
@@ -52,7 +53,11 @@ namespace ConsoleProject.View {
                 string[] filesDropped = (string[])e.Data.GetData(DataFormats.FileDrop, false);
                 TryTextureFile(filesDropped);
             };
-            TryTextureFile(fileList);
+			
+            if (fileList.Length > 0) {
+                TryTextureFile(fileList);
+            }
+			
             form.ShowDialog();
         }
         
@@ -102,7 +107,26 @@ namespace ConsoleProject.View {
                 Location = new Point(0, 20)
             };
             extractButton.Click += (s, e) => {
-                ExportService.WriteTextures(images);
+				using (var ofd = new OpenFileDialog()) {
+					ofd.Title = "Extract textures to folder...";
+					ofd.FileName = currentFile + "_Extracted";
+					ofd.CheckPathExists = true;
+					ofd.ShowReadOnly = false;
+					ofd.ReadOnlyChecked = true;
+					ofd.CheckFileExists = false;
+					ofd.ValidateNames = false;
+					ofd.InitialDirectory = Directory.GetCurrentDirectory();
+					ofd.RestoreDirectory = true;
+					//fbd.SelectedPath = Directory.GetCurrentDirectory() + "\\" + currentFile;
+					//fbd.ShowNewFolderButton = true;
+					DialogResult result = ofd.ShowDialog();
+
+					if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(ofd.FileName)) {
+						string epath = ofd.FileName;
+						Directory.CreateDirectory(epath);
+						if(Directory.Exists(epath)) ExportService.WriteTextures(images, epath);
+					}
+				}
             };
             return extractButton;
         }
@@ -168,6 +192,7 @@ namespace ConsoleProject.View {
         }
 
         private void LoadImages(string filename) {
+			currentFile = Path.GetFileName(filename);
             imageListBox.Items.Clear();
             for (int i = 0; i < images.Count; i++) {
                 imageListBox.Items.Add(images[i].Name);
@@ -177,7 +202,7 @@ namespace ConsoleProject.View {
                 imageListBox.SelectedIndex = 0;
             }
             DisplayImage();
-            form.Text = AppName + " - " + Path.GetFileName(filename);
+            form.Text = AppName + " - " + currentFile;
         }
 
         private void DisplayImage() {
@@ -193,6 +218,7 @@ namespace ConsoleProject.View {
             bool log = true;
 
             using (var fbd = new FolderBrowserDialog()) {
+				fbd.SelectedPath = Directory.GetCurrentDirectory();
                 DialogResult result = fbd.ShowDialog();
 
                 if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(fbd.SelectedPath)) {
@@ -228,9 +254,9 @@ namespace ConsoleProject.View {
                         }
                         
                         logContent += "Saved " + palette.Count + " colors out of " + completeColors.Count + "\n";
-                        
+						
                         //TODO: Replace with logger
-                        if (log) {
+                        if (log && images != null) {
                             Texture tex = images.Find(x => x.Name == Path.GetFileNameWithoutExtension(file));
                             if (tex != null) {
                                 logContent += tex.Name + " original colors info:\n";
@@ -247,7 +273,7 @@ namespace ConsoleProject.View {
                         logContent += "\n\n";
                         
                         while (palette.Count < 16) palette.Insert(0, Color.FromArgb(0, 0, 0, 0));
-
+						
                         if (palette.Count > 16) while (palette.Count < 256) palette.Insert(0, Color.FromArgb(0, 0, 0, 0));
 
                         palette.Sort((x, y) => x.A.CompareTo(y.A));
@@ -312,9 +338,9 @@ namespace ConsoleProject.View {
                         texture.Binary = SwizzleService.Swizzle(texture);
                         imgs.Add(texture);
                     }
+					TextureConverter.SaveTexFile(imgs);
                 }
             }
-            TextureConverter.SaveTexFile(imgs);
         }
     }
 }
