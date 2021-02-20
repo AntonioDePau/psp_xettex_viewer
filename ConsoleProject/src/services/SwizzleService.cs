@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using ConsoleProject.DTO;
 
 namespace ConsoleProject.Services {
@@ -8,7 +8,6 @@ namespace ConsoleProject.Services {
 
         public static byte[] Swizzle(Texture texture) {
             int offset = 0;
-
             int height = texture.Height;
             // Incorperate the bpp into the width
             int width = (texture.Width * texture.BitsPerPixel) >> 3;
@@ -47,25 +46,24 @@ namespace ConsoleProject.Services {
 
             byte[] destination = new byte[width * height];
 
-            int rowblocks = (width / 16);
+            int rowblocks = (width / Math.Min(Math.Min(16, texture.Width), texture.Height));
 
-            int magicNumber = 8;
+            int magicNumber = texture.Width > 8 ? 8 : 16;
+			int minimumDivide = 16;
 
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
-                    int blockX = x / 16;
+                    int blockX = x / minimumDivide;
                     int blockY = y / magicNumber;
 
                     int blockIndex = blockX + ((blockY) * rowblocks);
-                    int blockAddress = blockIndex * 16 * magicNumber;
-                    int offset = blockAddress + (x - blockX * 16) + ((y - blockY * magicNumber) * 16);
+                    int blockAddress = blockIndex * minimumDivide * magicNumber;
+                    int offset = blockAddress + (x - blockX * minimumDivide) + ((y - blockY * magicNumber) * minimumDivide);
                     destination[destinationOffset] = texture.Binary[offset];
                     destinationOffset++;
                 }
             }
-
             return destination;
         }
-         
     }
 }
